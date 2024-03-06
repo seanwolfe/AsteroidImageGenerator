@@ -29,6 +29,7 @@ class DistribuGen:
         self.samples = None
         return
 
+
     def database_parser_ssb(self):
         self.ssb_data = pd.read_csv(self.file_path_pre, sep=',', header=0,
                                     names=self.ssb_names)
@@ -38,6 +39,7 @@ class DistribuGen:
         self.h_data = pd.read_csv(self.file_path_post, sep=',', header=0,
                                   names=self.h_names)
         return
+
 
     def jpl_querier(self, row):
         # Integration step (in days)
@@ -173,6 +175,7 @@ class DistribuGen:
         matches = re.findall(r"\((.*?)\)", full_name)
         return matches[0]
 
+
     def generate(self, num_samples=1):
 
         sns.set(rc={'figure.figsize': (7, 6)})
@@ -195,7 +198,7 @@ class DistribuGen:
 
 if __name__ == '__main__':
     # two functions so far
-
+add user-friendly
     # optional query SSB database
 
     # first is to query JPL to get relevant quantities
@@ -215,3 +218,4 @@ if __name__ == '__main__':
     dis_gen.file_path_post = 'NEA_database.csv'
     number_of_samples = 1000000
     dis_gen.generate(number_of_samples)
+
