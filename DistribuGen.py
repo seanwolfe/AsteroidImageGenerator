@@ -15,12 +15,21 @@ class DistribuGen:
     def __int__(self):
         return
 
-    def database_parser(self, file_path='NEA_database.csv'):
+    @staticmethod
+    def database_parser(file_path='NEA_database.csv'):
         if file_path == 'NEA_database.csv':
             data = pd.read_csv(file_path, sep=',', header=0,
                                names=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
                                       'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch'])
+        elif file_path == 'NEA_database1.csv':
+            data = pd.read_csv(file_path, sep=',', header=0,
+                               names=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
+                                      'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch', 'omega', 'obs. ast. dist.',
+                                      'sun. ast. dist.', 'phase angle'])
 
+        else:
+            data = []
+            print("ERROR: Please specify correct NEA database path")
         return data
 
     def jpl_querier(self, row):
@@ -84,11 +93,26 @@ class DistribuGen:
 
     def main_parse(self):
         fp = 'NEA_database.csv'
-
+        fp1 = 'NEA_database1.csv'
         d = self.database_parser(fp)
+
         for idx, row in d.iterrows():
-            new_data = self.jpl_querier(row)
-            print(new_data)
+            if idx > 20389:
+                print("Querrying: " + row['full_name'])
+                try:
+                    new_data = self.jpl_querier(row)
+                    new_row = pd.DataFrame(
+                        {'full_name': row['full_name'], 'a': row['a'], 'e': row['a'],
+                         'i': row['i'], 'om': row['om'], 'w': row['w'], 'q': row['q'],
+                         'ad': row['ad'], 'per_y': row['per_y'],
+                         'data_arc': row['data_arc'], 'n_obs_used': row['n_obs_used'], 'H': row['H'],
+                         'first_obs': row['first_obs'], 'epoch': row['epoch'], 'omega': new_data[0],
+                         'obs. ast. dist.': new_data[1],
+                         'sun. ast. dist.': new_data[2], 'phase angle': new_data[3]}, index=[1])
+
+                    new_row.to_csv(fp1, sep=',', mode='a', header=False, index=False)
+                except ValueError:
+                    print("No ephemeris for target")
 
 
 if __name__ == '__main__':
