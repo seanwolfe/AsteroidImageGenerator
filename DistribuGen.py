@@ -1,36 +1,45 @@
-import re
-
 import pandas as pd
 from astroquery.jplhorizons import Horizons
 import re
 from astropy.time import Time
 import astropy.units as u
 import numpy as np
+import seaborn as sns
+from fitter import Fitter, get_common_distributions, get_distributions
+import matplotlib.pyplot as plt
+import scipy.stats as sp
 
 
 class DistribuGen:
-
     # properties
 
-    def __int__(self):
+    def __init__(self, fp_pre=None, cnames_ssb=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
+                                                'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch'],
+                 cnames_horizon=['RA_rate', 'DEC_rate', 'x', 'y', 'z', 'alpha'],
+                 cnames_dist=['H', 'omega', 'r_as', 'r_ao', 'alpha'], options='s'):
+        self.file_path_pre = fp_pre
+        self.ssb_names = cnames_ssb
+        self.h_names = cnames_horizon
+        self.dist_names = cnames_dist
+        self.file_path_post = None
+        self.ssb_data = None
+        self.h_data = None
+        self.dist_list = None
+        self.options = options
+        self.samples = None
         return
 
-    @staticmethod
-    def database_parser(file_path='NEA_database.csv'):
-        if file_path == 'NEA_database.csv':
-            data = pd.read_csv(file_path, sep=',', header=0,
-                               names=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
-                                      'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch'])
-        elif file_path == 'NEA_database1.csv':
-            data = pd.read_csv(file_path, sep=',', header=0,
-                               names=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
-                                      'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch', 'omega', 'obs. ast. dist.',
-                                      'sun. ast. dist.', 'phase angle'])
 
-        else:
-            data = []
-            print("ERROR: Please specify correct NEA database path")
-        return data
+    def database_parser_ssb(self):
+        self.ssb_data = pd.read_csv(self.file_path_pre, sep=',', header=0,
+                                    names=self.ssb_names)
+        return
+
+    def database_parser_h(self):
+        self.h_data = pd.read_csv(self.file_path_post, sep=',', header=0,
+                                  names=self.h_names)
+        return
+
 
     def jpl_querier(self, row):
         # Integration step (in days)
@@ -86,35 +95,127 @@ class DistribuGen:
 
         return omega, r_oa, r_as, alpha
 
+    def fit_distribution(self):
+
+        summaries = []
+        paramss = []
+
+        # get dataset
+        self.database_parser_h()
+        data = self.h_data
+        col_names = self.dist_names
+
+        # Filter out non-finite data
+        for idx, col_name in enumerate(col_names):
+
+            finite_values = ~data[col_name].isna() & data[col_name].apply(np.isfinite)
+            # Filter the DataFrame to show rows with non-finite values
+            rows_with_non_finite = data[finite_values]
+            d = rows_with_non_finite[col_name].values
+            if 'q' in self.options:
+                f = Fitter(d, distributions=get_common_distributions())
+            else:
+                f = Fitter(d)
+            f.fit()
+            if 'v' in self.options:
+                summary = f.summary(plot=False)
+            else:
+                fig = plt.figure()
+                summary = f.summary()
+                plt.xlabel(col_name)
+                plt.ylabel('Frequency')
+            summaries.append(summary)
+            params = f.fitted_param[summary.index[0]]
+            paramss.append(params)
+
+        dist_list = []
+        for idx, summarie in enumerate(summaries):
+            params = paramss[idx]
+            best_dist = summarie.index[0]
+            print("The best fitting distribution for {0} is the {1} distribution with parameters: {2}".format(
+                col_names[idx], best_dist, params))
+            print("\nA summary of the fitting:\n")
+            print(summarie['sumsquare_error'])
+            print("\n")
+
+            dist_list.append([col_names[idx], best_dist, params])
+
+        self.dist_list = dist_list
+
+        return
+
+    def sample_gen(self, num_samples):
+
+        # self.samples = pd.DataFrame(columns=self.dist_names)
+        pre_append = []
+        for idx, dist in enumerate(self.dist_list):
+            # unpack
+            # col_name = dist[0]
+            best_dist = dist[1]
+            params = dist[2]
+
+            # Check if the distribution name is valid
+            if hasattr(sp, best_dist):
+                # Get the distribution object using getattr()
+                dist = getattr(sp, best_dist)
+                # Generate a random variable from the distribution
+                random_variable = dist.rvs(*params, size=num_samples)
+                pre_append.append(random_variable)
+
+            else:
+                print("Invalid distribution name")
+                return None
+
+        self.samples = pd.DataFrame(np.array(pre_append).reshape(num_samples, len(self.dist_names)),
+                                    columns=self.dist_names)
+        return
+
     @staticmethod
     def parse_name(full_name):
         matches = re.findall(r"\((.*?)\)", full_name)
         return matches[0]
 
-    def main_parse(self):
-        fp = 'NEA_database.csv'
-        fp1 = 'NEA_database1.csv'
-        d = self.database_parser(fp)
 
-        for idx, row in d.iterrows():
-            if idx > 20389:
-                print("Querrying: " + row['full_name'])
-                try:
-                    new_data = self.jpl_querier(row)
-                    new_row = pd.DataFrame(
-                        {'full_name': row['full_name'], 'a': row['a'], 'e': row['a'],
-                         'i': row['i'], 'om': row['om'], 'w': row['w'], 'q': row['q'],
-                         'ad': row['ad'], 'per_y': row['per_y'],
-                         'data_arc': row['data_arc'], 'n_obs_used': row['n_obs_used'], 'H': row['H'],
-                         'first_obs': row['first_obs'], 'epoch': row['epoch'], 'omega': new_data[0],
-                         'obs. ast. dist.': new_data[1],
-                         'sun. ast. dist.': new_data[2], 'phase angle': new_data[3]}, index=[1])
+    def generate(self, num_samples=1):
 
-                    new_row.to_csv(fp1, sep=',', mode='a', header=False, index=False)
-                except ValueError:
-                    print("No ephemeris for target")
+        sns.set(rc={'figure.figsize': (7, 6)})
+        sns.set_style('ticks')
+        sns.set_context("paper", font_scale=2)
+        self.database_parser_ssb()
+        self.fit_distribution()
+        if 'm' in self.options:
+            pass
+        else:
+            self.sample_gen(num_samples)
+
+        if 'v' in self.options:
+            pass
+        else:
+            plt.show()
+
+        return
 
 
 if __name__ == '__main__':
-    disgen = DistribuGen()
-    disgen.main_parse()
+    # two functions so far
+add user-friendly
+    # optional query SSB database
+
+    # first is to query JPL to get relevant quantities
+
+    # second is to fit the distribution for each parameter
+    # this should return each characteristic histogram with top-5 plotted
+    # this should return top-5 sum-of-square errors
+    # this should return the best distribtution name, parameters, and sample generators
+    # options - 'v': do not include visualization
+    #           'q': quick fit of distribution looking at only common ones
+    #           's': standard full package (default)
+    #           'm': do not generate samples
+    dis_gen = DistribuGen(fp_pre='NEA_database.csv',
+                          cnames_horizon=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
+                                          'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch'],
+                          cnames_dist=['H', 'i'], options='q')
+    dis_gen.file_path_post = 'NEA_database.csv'
+    number_of_samples = 1000000
+    dis_gen.generate(number_of_samples)
+
