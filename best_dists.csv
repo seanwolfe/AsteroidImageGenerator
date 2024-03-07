@@ -1,0 +1,60 @@
+best_dists = [['H', 'johnsonsb', (-0.9935870440044015, 2.2890296117910696, 6.140339461127827, 28.764723060318502)], ['omega', 'pareto', (2.361744794213135, -745.2220097319862, 746.5347367329749)], ['obs. ast. dist.', 'lognorm', (1.2598414405340927, -0.0019218138555308834, 0.1266514753689951)], ['sun. ast. dist.', 'cauchy', (1.0758157182196015, 0.07079504200127112)], ['phase angle', 'lognorm', (0.5223013308978907, -8.526357942624061, 32.421789389512846)]]
+
+The best fitting distribution for H is the johnsonsb distribution with parameters: (-0.9935870440044015, 2.2890296117910696, 6.140339461127827, 28.764723060318502)
+
+A summary of the fitting:
+
+johnsonsb      0.011083
+burr12         0.011292
+weibull_min    0.011340
+beta           0.011715
+gumbel_l       0.011803
+Name: sumsquare_error, dtype: float64
+
+
+The best fitting distribution for omega is the pareto distribution with parameters: (2.361744794213135, -745.2220097319862, 746.5347367329749)
+
+A summary of the fitting:
+
+pareto     2.788408e-08
+lognorm    7.853149e-08
+expon      8.862784e-07
+gennorm    1.125417e-06
+cauchy     1.472396e-06
+Name: sumsquare_error, dtype: float64
+
+
+The best fitting distribution for obs. ast. dist. is the lognorm distribution with parameters: (1.2598414405340927, -0.0019218138555308834, 0.1266514753689951)
+
+A summary of the fitting:
+
+lognorm     0.490464
+pareto      0.515630
+expon       3.843560
+cauchy     13.766873
+moyal      15.419610
+Name: sumsquare_error, dtype: float64
+
+
+The best fitting distribution for sun. ast. dist. is the cauchy distribution with parameters: (1.0758157182196015, 0.07079504200127112)
+
+A summary of the fitting:
+
+cauchy       10.060465
+gumbel_r     15.260606
+laplace      17.122858
+lognorm      17.538713
+hypsecant    20.390329
+Name: sumsquare_error, dtype: float64
+
+
+The best fitting distribution for phase angle is the lognorm distribution with parameters: (0.5223013308978907, -8.526357942624061, 32.421789389512846)
+
+A summary of the fitting:
+
+lognorm     0.000110
+gumbel_r    0.000218
+rayleigh    0.000365
+logistic    0.000749
+norm        0.000938
+Name: sumsquare_error, dtype: float64
