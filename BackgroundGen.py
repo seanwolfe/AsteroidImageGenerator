@@ -17,32 +17,54 @@ from photutils.utils import circular_footprint
 plt.style.use(astropy_mpl_style)
 
 
-class ImageGen:
-
-    # properties
+class BackgroundGen:
+    """
+    Class for generating stellar backgrounds given images for eventual use in training AI. With a folder of images
+    taken by telescopes of the sky, the class will randomly pick an image from the folder, apply some minor
+    preprocessing (thresholding and stretching), randomly crop out a sub-image according to specified output
+    dimensions, estimate the background statistics of the image, save it in a folder. The class also allows for
+    viewing of original and cropped out images, as well as saves a dataframe containing the original file chosen,
+    folder in which crop is saved, the background statistics of crop and the pixel location in the original image
+    where the crop began. Images are expected to be .FITS files. The cropped image is saved as 0.jpg and 0.npy. The
+    image is for viewing whilst the array is for use.
+    """
 
     def __init__(self, real_image_dir='synthetic_tracklets/real_image_stacks',
                  synthetic_image_dir='synthetic_tracklets/synthetic_image_stacks', interval_threshold=0.15, stretch=0.1,
                  output_image_width=224, ouput_image_height=224):
+        """
+
+        :param real_image_dir: the head level directory where the real images to be used as crops are located
+        :param synthetic_image_dir: the head level directory where the cropped out backgrounds should be stored
+        :param interval_threshold: the threshold used in preprocessing
+        :param stretch: the stretch factor used in a Asinh stretch function
+        :param output_image_width: output image width in pixels
+        :param ouput_image_height: input image width in pixels
+        """
         self.directory = real_image_dir
-        self.image_file_path = None
+        self.image_file_path = None  # the file path of the random real image chosen
         self.interval_thresh = interval_threshold
         self.stretch_factor = stretch
-        self.post_processed_image = None
-        self.original_image = None
-        self.image_header = None
-        self.input_image_dims = None
+        self.post_processed_image = None  # array holding the pixel values of the post processed image
+        self.original_image = None  # array holding the pixel values of the original image
+        self.image_header = None  # the image header from a .FITS file
+        self.input_image_dims = None  # input image dimensions in pixels of original image
         self.output_image_dims = (output_image_width, ouput_image_height)
-        self.image_crop = None
-        self.crop_start = None
+        self.image_crop = None  # the cropped and post-processed image
+        self.crop_start = None  # the pixel location in the original image of the crop start
         self.fake_im_directory = synthetic_image_dir
-        self.mean = None
-        self.median = None
-        self.std = None
-        self.stack_folder = None
+        self.mean = None  # cropped image mean value (after 3-sigma clipping and masking)
+        self.median = None  # cropped image median value (after 3-sigma clipping and masking)
+        self.std = None  # cropped image standard deviation (after 3-sigma clipping and masking)
+        self.stack_folder = None  # the folder path in which the cropped image will be stored
         return
 
     def get_random_file(self):
+        """
+        The function call picks a random file (ensure only image files are contained within the directory), .fits file,
+        and returns the file path is such a file is found else None
+        :return: file path of randomly chosen file
+        """
         # List all files and directories in the specified directory
         files = []
         for root, dirs, filenames in os.walk(self.directory):
@@ -56,6 +78,12 @@ class ImageGen:
             return None
 
     def open_image(self):
+        """
+        Opens the image by first using get_random_file() to obtain a file path. Splits the file into a header portion
+        and an image portion. The input dimensions of the image is extracted from the header. Pre processing tasks,
+        thresholding and stretching are applied to get post processed image.
+        :return:
+        """
         self.image_file_path = self.get_random_file()
         if self.image_file_path:
             # open .fits file
@@ -85,6 +113,13 @@ class ImageGen:
         return
 
     def random_crop(self):
+        """
+        Crop an image according to output dimensions, while ensuring that the output dimensions of the image are
+        satisfied. Calculate the region of allowable starting crop pixel locations, and then randomly chose from
+        these locations in order to crop an image of specified dimensions. Stor in image_crop property and crop_start
+        property for location.
+        :return:
+        """
         w1, h1 = self.input_image_dims
         w2, h2 = self.output_image_dims
         # Calculate the maximum valid starting pixel positions for the crop
@@ -102,10 +137,15 @@ class ImageGen:
         return
 
     def view_image(self, image_data):
-
+        """
+        Given an array of pixel values, view the image. If the image has a cropped out version, add a red rectangle
+        where the crop occurred in the original image.
+        :param image_data:
+        :return:
+        """
         fig = plt.figure()
         ax = fig.add_subplot(1, 1, 1)
-        if self.image_crop is None:
+        if self.image_crop is None:  # if there is a crop of image existing
             pass
         else:
             if len(image_data) > self.output_image_dims[0]:
@@ -120,6 +160,12 @@ class ImageGen:
         return
 
     def save_image(self):
+        """
+        Save the cropped out image in its own folder with a unique name of folder, but the image file is saved as
+        0.jpg and 0.npy. The array saved contains normalized values 0 to 1 while the image has been rescaled from
+        0 to 255.
+        :return:
+        """
         # Check existing stack folders and determine the next available folder name
         stacks_directory = self.fake_im_directory
         existing_stacks = os.listdir(stacks_directory)
@@ -147,6 +193,12 @@ class ImageGen:
         return
 
     def background_stats(self):
+        """
+        Estimate the background statistics of the image using photoutils package. Clip the image to dampen bright
+        sources. Then detect all sources above a certain limit and mask them. Then estimate the mean, median and
+        standard deviation of image with masked sources.
+        :return:
+        """
         sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
         threshold = detect_threshold(self.image_crop, nsigma=2.0, sigma_clip=sigma_clip)
         segment_img = detect_sources(self.image_crop, threshold, npixels=10)
@@ -156,8 +208,20 @@ class ImageGen:
         return
 
     def stack_generator(self, num_stacks):
+        """
+        Main function for generating a certain number of backgrounds that are random, the number of backgrounds
+        generated is specified by num_stacks parameter. First a real image is opened randomly from a specified folder.
+        Next, a random crop of the original .FITS image is taken and saved in a separate folder. The backround stats
+        are esimated and saved to a dataframe .csv file once all stacks are generated. The .csv file is comma separated
+        with columns: columns=['Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median',
+                                                'Stack Standard Deviation', 'Stack Crop Start']
+        :param num_stacks: The number of random background images of specified output size to create from original input
+        images.
+        :return:
+        """
         stats = []
         for idx in range(0, num_stacks):
+            print(idx)
             self.open_image()
             self.random_crop()
             self.save_image()
@@ -173,7 +237,7 @@ class ImageGen:
 
 
 if __name__ == '__main__':
-    aigen = ImageGen()
+    aigen = BackgroundGen()
     # for i in range(0, 5):
     #     aigen.open_image()
     #     aigen.random_crop()

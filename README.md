@@ -1,2 +1,2 @@
 # AsteroidImageGenerator
-Asteroid Synthtetic Image Generation
+Asteroid Synthetic Image Generation
