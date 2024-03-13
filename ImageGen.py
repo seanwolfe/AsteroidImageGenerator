@@ -66,7 +66,7 @@ class ImageGen:
         return
 
     def streak_start_calc(self, dist_data):
-        lengths = dist_data['omega'] * self.configuration['num_frames'] * (
+        lengths = 2 * dist_data['omega'] * self.configuration['num_frames'] * (
                 self.configuration['dt'] + self.configuration['slew_time']) / (
                           3600 * self.configuration['pixel_scale'])
         centers_x = pd.DataFrame(lengths).applymap(
@@ -82,7 +82,50 @@ class ImageGen:
         final_df.to_csv(config['center_file_name'], sep=',', header=True, index=False)
         return
 
+    def track_centers(self, row):
+
+        center_x0 = row['Center x']
+        center_y0 = row['Center y']
+        centers_x = []
+        centers_y = []
+        for kdx in range(0, self.configuration['num_frames']):
+            center_xp1 = center_x0 + self.configuration['pixel_scale'] * row['omega'] / 3600 * kdx * (
+                        self.configuration['dt'] + self.configuration['slew_time'] * np.cos(np.deg2rad(row['Theta'])))
+            center_yp1 = center_y0 + self.configuration['pixel_scale'] * row['omega'] / 3600 * kdx * (
+                    self.configuration['dt'] + self.configuration['slew_time'] * np.sin(np.deg2rad(row['Theta'])))
+            centers_x.append(center_xp1)
+            centers_y.append(center_yp1)
+        return centers_x, centers_y
+
     def gen_images_and_file(self):
+
+        for idx, row in self.master.iterrows():
+
+            # generate track centers
+            centers_x, centers_y = self.track_centers(row)
+
+            # generate signals for each track center
+            length = row['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
+            crop_dist = int(length / 2 + self.configuration['signal_crop_threshold'] * row['Sigma_g'])
+
+            for jdx in range(0, self.configuration['num_frames']):
+                # open image
+
+                # make meshgrid corresponding to entire image
+
+                # calculate Gaussian at each pixel in image
+
+                # add meshgrid to image
+
+                # center_x = centers_x[jdx]
+                # center_y = centers_y[jdx]
+                # x = np.linspace(center_x - crop_dist, center_x + crop_dist, 2 * crop_dist)
+                # y = np.linspace(center_y - crop_dist, center_y + crop_dist, 2 * crop_dist)
+
+
+                # add signal to background
+
+                # save image
         return
 
     @staticmethod
@@ -101,3 +144,4 @@ if __name__ == '__main__':
         config = yaml.safe_load(f)
 
     ai_generator = ImageGen(config)
+    ai_generator.gen_images_and_file()

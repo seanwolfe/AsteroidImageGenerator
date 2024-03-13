@@ -43,7 +43,7 @@ horizons_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_
 # visualization, where if 'v' is specified, visualizations are NOT included. If 'm' is specified, then samples are
 # NOT generated. The 'q', 'm' and 'v' parameters can be specified in combinations but the exact results for each
 # combination is not verified.
-options: 'qv'
+options: 's'
 
 # For some distributions, like the apparent motion, there may be some range over which you want the distribution to be
 # fitted, as there may be some outlier data from JPL Horizons. It is specified as a list of lists: [[min parameter 1,
@@ -76,3 +76,6 @@ phi_2_derivative_initial: -0.572957795130823208767981548141051703324054724665643
 phi_2_derivative_end: -8.6573138e-8  # derivative condition at end of spline for phi_2
 phi_3_derivative_initial: -1.0630097e-1  # derivative condition at beginning of spline for phi_3
 phi_3_derivative_end: 0  # derivative condition at end of spline for phi_3
+
+
+signal_crop_threshold: 5  # this number multiplies sig_g to determine the size of the array that will contain the streak in each frame
