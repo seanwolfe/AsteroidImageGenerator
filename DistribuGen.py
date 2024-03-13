@@ -8,6 +8,7 @@ import seaborn as sns
 from fitter import Fitter, get_common_distributions, get_distributions
 import matplotlib.pyplot as plt
 import scipy.stats as sp
+import os
 
 
 class DistribuGen:
@@ -55,8 +56,9 @@ class DistribuGen:
         obs_loc: The MPC designated observatory location that works with JPL Horizons, default is geocentric Earth (500)
     """
 
-    def __init__(self, fp_pre=None, fp_post=None, cnames_ssb=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
-                                                              'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch'],
+    def __init__(self, fp_pre='NEA_database_ssb.csv', fp_post='NEA_database_hor.csv', fp_final='NEA_distribution.csv',
+                 cnames_ssb=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
+                             'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch'],
                  cnames_horizon=['full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y', 'data_arc', 'n_obs_used',
                                  'H', 'first_obs', 'epoch', 'omega', 'obs. ast. dist.', 'sun. ast. dist.',
                                  'phase angle'],
@@ -76,7 +78,9 @@ class DistribuGen:
                                specified, the names of the default ssb file plus some required parameters for synthetic asteroid
                                generation will be used.
         :param cnames_dist: This is a list of names of the resultant distributions that you would like fitted. If not
-                            specified, the minimum set for proper synthetic asteroid generation will be used.
+                            specified, the minimum set for proper synthetic asteroid generation will be used. Do not
+                            include streak orientation and width in these names, as they are later tacked on from
+                            sampling uniform distributions
         :param options: The default option is 's' for standard, checks all distributions for fitting, does
                         visualization, and generates samples. The 'q' parameter is for quick, only fitting against
                         common distributions, the 'v' parameter is for visualization, where if 'v' is specified,
@@ -103,6 +107,7 @@ class DistribuGen:
         self.samples = None
         self.dist_range = dist_range
         self.obs_loc = observer
+        self.final_path = fp_final
         return
 
     def database_parser_ssb(self):
@@ -213,7 +218,7 @@ class DistribuGen:
         col_names = self.dist_names
 
         # Filter out non-finite data
-        for idx, col_name in enumerate(col_names):
+        for idx, col_name in enumerate(col_names[0:5]):
 
             finite_values = ~data[col_name].isna() & data[col_name].apply(np.isfinite)
             # Filter the DataFrame to show rows with non-finite values
@@ -268,7 +273,7 @@ class DistribuGen:
         :return:
         """
         pre_append = []
-        for idx, dist in enumerate(self.dist_list):
+        for idx, dist in enumerate(self.dist_list[0:5]):
             # unpack
             # col_name = dist[0]
             best_dist = dist[1]
@@ -296,9 +301,14 @@ class DistribuGen:
                 return None
 
         self.samples = pd.DataFrame(np.array(pre_append).T,
-                                    columns=self.dist_names)
+                                    columns=self.dist_names[0:5])
 
-        self.samples.to_csv('NEA_distribution_samples.csv', sep=',', header=True, index=False)
+        # for streak orientation and width, draw from uniform distribution and known gaussian distribution
+        self.samples['Theta'] = np.random.uniform(0, 360, size=num_samples)
+        self.samples['Sigma_g'] = np.random.uniform(0.1, 5, size=num_samples)
+        self.samples['g_12'] = np.random.choice([0.58, 0.47], size=num_samples)  # asteroid types c and s
+
+        self.samples.to_csv(self.final_path, sep=',', header=True, index=False)
         return
 
     @staticmethod
@@ -331,19 +341,17 @@ class DistribuGen:
         sns.set_style('ticks')
         sns.set_context("paper", font_scale=2)
 
-        if self.file_path_pre:
-
+        if os.path.exists(self.file_path_pre):
             pass
         else:
             # query SSB
             # generate file, set file path name, column names
             pass
 
-        if self.file_path_post:
+        if os.path.exists(self.file_path_post):
             pass
         else:
             # query jpl horizons
-            self.file_path_post = 'NEA_database_hor1.csv'
             self.horizons_query()
         self.fit_distribution()
         if 'm' in self.options:
@@ -394,7 +402,7 @@ if __name__ == '__main__':
     dis_gen = DistribuGen(fp_pre='NEA_database_ssb.csv', fp_post='NEA_database_hor.csv',
                           cnames_dist=['H', 'omega', 'obs. ast. dist.', 'sun. ast. dist.', 'phase angle'],
                           options='s')
-    number_of_samples = 100
+    number_of_samples = 10000000
     dis_gen.generate(number_of_samples)
 
     # data = pd.read_csv('NEA_distribution_samples_10000000.csv', sep=',', header=0,

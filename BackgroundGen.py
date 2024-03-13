@@ -29,9 +29,7 @@ class BackgroundGen:
     image is for viewing whilst the array is for use.
     """
 
-    def __init__(self, real_image_dir='synthetic_tracklets/real_image_stacks',
-                 synthetic_image_dir='synthetic_tracklets/synthetic_image_stacks', interval_threshold=0.15, stretch=0.1,
-                 output_image_width=224, ouput_image_height=224):
+    def __init__(self, config):
         """
 
         :param real_image_dir: the head level directory where the real images to be used as crops are located
@@ -41,22 +39,23 @@ class BackgroundGen:
         :param output_image_width: output image width in pixels
         :param ouput_image_height: input image width in pixels
         """
-        self.directory = real_image_dir
+        self.directory = config['real_image_directory']
         self.image_file_path = None  # the file path of the random real image chosen
-        self.interval_thresh = interval_threshold
-        self.stretch_factor = stretch
+        self.interval_thresh = config['interval_threshold']
+        self.stretch_factor = config['stretch']
         self.post_processed_image = None  # array holding the pixel values of the post processed image
         self.original_image = None  # array holding the pixel values of the original image
         self.image_header = None  # the image header from a .FITS file
         self.input_image_dims = None  # input image dimensions in pixels of original image
-        self.output_image_dims = (output_image_width, ouput_image_height)
+        self.output_image_dims = (config['output_image_width'], config['output_image_height'])
         self.image_crop = None  # the cropped and post-processed image
         self.crop_start = None  # the pixel location in the original image of the crop start
-        self.fake_im_directory = synthetic_image_dir
+        self.fake_im_directory = config['synthetic_image_directory']
         self.mean = None  # cropped image mean value (after 3-sigma clipping and masking)
         self.median = None  # cropped image median value (after 3-sigma clipping and masking)
         self.std = None  # cropped image standard deviation (after 3-sigma clipping and masking)
         self.stack_folder = None  # the folder path in which the cropped image will be stored
+        self.configuration = config
         return
 
     def get_random_file(self):
@@ -109,7 +108,7 @@ class BackgroundGen:
             self.post_processed_image = stretch(clipped_data)
 
         else:
-            print("No files found in the directory.")
+            raise ValueError("No files found in the directory.")
         return
 
     def random_crop(self):
@@ -199,12 +198,16 @@ class BackgroundGen:
         standard deviation of image with masked sources.
         :return:
         """
-        sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
-        threshold = detect_threshold(self.image_crop, nsigma=2.0, sigma_clip=sigma_clip)
-        segment_img = detect_sources(self.image_crop, threshold, npixels=10)
-        footprint = circular_footprint(radius=10)
+        sigma_clip = SigmaClip(sigma=self.configuration['sigmaclip_sigma'],
+                               maxiters=self.configuration['sigmaclip_maxiters'])
+        threshold = detect_threshold(self.image_crop, nsigma=self.configuration['detect_threshold_nsigma'],
+                                     sigma_clip=sigma_clip)
+        segment_img = detect_sources(self.image_crop, threshold, npixels=self.configuration['detect_sources_npixels'])
+        footprint = circular_footprint(radius=self.configuration['circular_footprint_radius'])
         mask = segment_img.make_source_mask(footprint=footprint)
-        self.mean, self.median, self.std = sigma_clipped_stats(self.image_crop, sigma=3.0, mask=mask)
+        self.mean, self.median, self.std = sigma_clipped_stats(self.image_crop,
+                                                               sigma=self.configuration['sigma_clipped_stats_sigma'],
+                                                               mask=mask)
         return
 
     def stack_generator(self, num_stacks):
@@ -232,7 +235,7 @@ class BackgroundGen:
 
         stats_df = pd.DataFrame(stats, columns=['Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median',
                                                 'Stack Standard Deviation', 'Stack Crop Start'])
-        stats_df.to_csv(path_or_buf='stack_stats.csv', sep=',', header=True, index=False)
+        stats_df.to_csv(path_or_buf=self.configuration['stack_file_name'], sep=',', header=True, index=False)
         return
 
 
