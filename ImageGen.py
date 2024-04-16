@@ -72,6 +72,7 @@ class ImageGen:
                      center_data.reset_index(drop=True)], axis=1)
                 master_data.to_csv(master_file, sep=',', header=True, index=False)
             self.master = pd.read_csv(master_file, sep=',', header=0, names=configs['master_file_columns'])
+            self.background = BackgroundGen(configs)  # just to use some processing functions later
         return
 
     def streak_start_calc(self, dist_data):
@@ -179,8 +180,14 @@ class ImageGen:
                 signal = self.gaussian_streak(big_x, big_y, row, centers_x[jdx], centers_y[jdx], big_l)
                 signals.append(signal)
 
+                # generate noise for background image
+                noise = np.random.normal(loc=0, scale=row['Stack Standard Deviation'], size=background_image.shape)
+
                 # add meshgrid to image
-                final_image = self.tester.background.process(signal + background_image)
+                if 't' in self.configuration['options']:
+                    final_image = self.tester.background.process(signal + background_image + noise)
+                else:
+                    final_image = self.background.process(signal + background_image + noise)
                 final_images.append(final_image)
 
                 # save image
@@ -217,21 +224,21 @@ class ImageGen:
                                              linewidth=1)
 
                     summed_signal = sum(signals)
-                    fig3 = plt.figure()
-                    ax3 = fig3.add_subplot(1, 1, 1)
-                    im3 = ax3.imshow(final_image, cmap='gray')
+                    # fig3 = plt.figure()
+                    # ax3 = fig3.add_subplot(1, 1, 1)
+                    # im3 = ax3.imshow(final_image, cmap='gray')
                     # ax3.set_title('Summed Signal Image 0 to 1')
-                    ax3.add_patch(circle3)
+                    # ax3.add_patch(circle3)
                     # ax3.scatter(centers_x, centers_y, s=1)
-                    fig3.colorbar(im3)
+                    # fig3.colorbar(im3)
 
-                    fig4 = plt.figure()
-                    ax4 = fig4.add_subplot(1, 1, 1)
-                    im4 = ax4.imshow(signal, cmap='gray')
+                    # fig4 = plt.figure()
+                    # ax4 = fig4.add_subplot(1, 1, 1)
+                    # im4 = ax4.imshow(signal, cmap='gray')
                     # ax3.set_title('Summed Signal Image 0 to 1')
-                    ax4.add_patch(circle4)
+                    # ax4.add_patch(circle4)
                     # ax3.scatter(centers_x, centers_y, s=1)
-                    fig4.colorbar(im4)
+                    # fig4.colorbar(im4)
 
                     # fig5 = plt.figure()
                     # ax5 = fig5.add_subplot(1, 1, 1)
@@ -241,14 +248,14 @@ class ImageGen:
                     # ax3.scatter(centers_x, centers_y, s=1)
                     # fig5.colorbar(im5)
 
-                    plt.show()
+                    # plt.show()
                     # Add a red circle with a red border (no fill)
-                    circle = patches.Circle((centers_x[0], centers_y[0]), 10, edgecolor='red', facecolor='none',
-                                            linewidth=1)
-                    circle1 = patches.Circle((centers_x[0], centers_y[0]), 10, edgecolor='red', facecolor='none',
-                                             linewidth=1)
-                    circle2 = patches.Circle((centers_x[0], centers_y[0]), 10, edgecolor='red', facecolor='none',
-                                             linewidth=1)
+                    # circle = patches.Circle((centers_x[0], centers_y[0]), 10, edgecolor='red', facecolor='none',
+                    #                         linewidth=1)
+                    # circle1 = patches.Circle((centers_x[0], centers_y[0]), 10, edgecolor='red', facecolor='none',
+                    #                          linewidth=1)
+                    # circle2 = patches.Circle((centers_x[0], centers_y[0]), 10, edgecolor='red', facecolor='none',
+                    #                          linewidth=1)
 
                     # Add the circle to the plot
                     # fig = plt.figure()
@@ -289,13 +296,8 @@ class ImageGen:
         arg_3 = ((x - x_0) * np.cos(np.deg2rad(row['Theta'])) - (y - y_0) * np.sin(
             np.deg2rad(row['Theta'])) - big_l / 2) / (np.sqrt(2) * row['Sigma_g'])
         arg_4 = row['Expected Signal'] / (big_l * 2 * row['Sigma_g'] * np.sqrt(2 * np.pi))
-        arg_4_test = row['Expected Signal']
-
         # signal
-        s_xy = arg_4_test * np.exp(-arg_1) * (scipy.special.erf(arg_2) - scipy.special.erf(arg_3))
-        # background
-        # background_flux = (big_l + 2 * self.configuration['num_sigmas'] * row['Sigma_g']) * (
-        #             self.configuration['num_sigmas'] * row['Sigma_g']) * row['Stack Mean']
+        s_xy = arg_4 * np.exp(-arg_1) * (scipy.special.erf(arg_2) - scipy.special.erf(arg_3))
         # statistical noise
         # Generate a vector with values sampled from a normal distribution
         # with mean 0 and unit variance

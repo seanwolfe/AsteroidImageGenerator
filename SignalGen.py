@@ -163,7 +163,7 @@ class SignalGen:
 
         # terms 3 and 4 represent the sensitivity in Zhai et al. 2024.
         snr = t1 * t2 * t3 * t4['reductions']
-        snr = pd.Series(np.arange(1,102))
+
         return snr
 
     def signal_calc(self, snr):
@@ -189,14 +189,24 @@ class SignalGen:
         deviation. Using SNR = S / sqrt(S + B)
         :return: the expected signal level
         """
-        snr_vals = master['Expected SNR'].values
-        big_l = master['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
-        background_flux = (big_l + 2 * self.configuration['num_sigmas'] * master['Sigma_g']) * (self.configuration['num_sigmas'] * master['Sigma_g']) * master['Stack Mean']
-        print(background_flux)
-        ones = np.ones_like(snr_vals)
-        coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
-        d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
-        roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
+        if 't' in self.configuration['options']:
+            snr_vals = master['Expected SNR'].values
+            big_l = master['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
+            background_flux = (big_l + 2 * self.configuration['num_sigmas'] * master['Sigma_g']) * (
+                        self.configuration['num_sigmas'] * master['Sigma_g']) * master['Stack Mean']
+            ones = np.ones_like(snr_vals)
+            coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
+            d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
+            roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
+        else:
+            snr_vals = master.values
+            big_l = self.dist_data['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
+            background_flux = (big_l + 2 * self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * (
+                    self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * self.stack_data['Stack Mean']
+            ones = np.ones_like(snr_vals)
+            coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
+            d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
+            roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
         return roots[:, 1]
 
     def signal_calc_test2(self, master):
@@ -213,13 +223,12 @@ class SignalGen:
         roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
         return roots[:, 1]
 
-
     def gen_snr_file(self):
 
         phi_1_s, phi_2_s, phi_3_s = self.calc_phis(self.dist_data['phase angle'])
         v_s_s = self.apparent_magnitude_calc(phi_1_s, phi_2_s, phi_3_s)
         snr = self.snr_calc(v_s_s)
-        sig_level = self.signal_calc(snr)
+        sig_level = self.signal_calc_test(snr)
         data = {'Expected SNR': snr,
                 'Expected Signal': sig_level}
         snr_data = pd.DataFrame(data)

@@ -27,8 +27,7 @@ class TestSetGen:
                               [self.configuration['crop_start']], [self.configuration['center_x']],
                               [self.configuration['center_y']]))
         testset = pd.DataFrame(combos, columns=config['master_file_columns'])
-        testset['Expected Signal'] = self.signal_gen.signal_calc_test2(testset)
-        print(testset)
+        testset['Expected Signal'] = self.signal_gen.signal_calc_test(testset)
         self.testset = testset
         testset.to_csv(os.path.join(self.configuration['test_set_directory'], 'testset.csv'), sep=',', index=False,
                        header=True)
