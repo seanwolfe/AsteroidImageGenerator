@@ -77,16 +77,19 @@ class SignalGen:
         self.pixel_scale = configs['pixel_scale']  # in arcsec/pixel
         self.configuration = configs
 
-        self.dist_data = pd.read_csv(configs['distribution_file_name'], sep=',', header=0,
-                                     names=configs['distribution_file_columns'])
-        self.stack_data = pd.read_csv(configs['stack_file_name'], sep=',', header=0,
-                                      names=configs['stack_file_columns'])
+        if 't' in self.configuration['options']:
+            pass
+        else:
+            self.dist_data = pd.read_csv(configs['distribution_file_name'], sep=',', header=0,
+                                         names=configs['distribution_file_columns'])
+            self.stack_data = pd.read_csv(configs['stack_file_name'], sep=',', header=0,
+                                          names=configs['stack_file_columns'])
 
-        # see Muinonen et al 2010 for details on g_1 and g_2 from g_12
-        self.g_1 = pd.Series(self.dist_data['g_12']).apply(
-            lambda g_12: 0.9529 * g_12 + 0.02162 if g_12 >= 0.2 else 0.7527 * g_12 + 0.06164)
-        self.g_2 = pd.Series(self.dist_data['g_12']).apply(
-            lambda g_12: -0.6125 * g_12 + 0.5572 if g_12 >= 0.2 else -0.9612 * g_12 + 0.6270)
+            # see Muinonen et al 2010 for details on g_1 and g_2 from g_12
+            self.g_1 = pd.Series(self.dist_data['g_12']).apply(
+                lambda g_12: 0.9529 * g_12 + 0.02162 if g_12 >= 0.2 else 0.7527 * g_12 + 0.06164)
+            self.g_2 = pd.Series(self.dist_data['g_12']).apply(
+                lambda g_12: -0.6125 * g_12 + 0.5572 if g_12 >= 0.2 else -0.9612 * g_12 + 0.6270)
 
         return
 
@@ -160,16 +163,56 @@ class SignalGen:
 
         # terms 3 and 4 represent the sensitivity in Zhai et al. 2024.
         snr = t1 * t2 * t3 * t4['reductions']
-
+        snr = pd.Series(np.arange(1,102))
         return snr
 
     def signal_calc(self, snr):
         """
         calculate the expected signal level in an image with an expected snr and a measured background standard
-        deviation. Using sig = SNR * std_background
+        deviation. Using SNR = S / sqrt(S + B)
         :return: the expected signal level
         """
-        return snr * self.stack_data['Stack Standard Deviation']
+        snr_vals = snr.values
+        big_l = self.dist_data['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
+        print(self.stack_data['Stack Mean'])
+        print(self.dist_data['Sigma_g'] * 2 * np.sqrt(2 * np.pi) * big_l)
+        mean_vals = self.stack_data['Stack Mean'] * self.dist_data['Sigma_g'] * 2 * np.sqrt(2 * np.pi) * big_l
+        ones = np.ones_like(snr_vals)
+        coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * mean_vals]).T
+        d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
+        roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
+        return roots[:, 1] + self.stack_data['Stack Mean']
+
+    def signal_calc_test(self, master):
+        """
+        calculate the expected signal level in an image with an expected snr and a measured background standard
+        deviation. Using SNR = S / sqrt(S + B)
+        :return: the expected signal level
+        """
+        snr_vals = master['Expected SNR'].values
+        big_l = master['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
+        background_flux = (big_l + 2 * self.configuration['num_sigmas'] * master['Sigma_g']) * (self.configuration['num_sigmas'] * master['Sigma_g']) * master['Stack Mean']
+        print(background_flux)
+        ones = np.ones_like(snr_vals)
+        coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
+        d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
+        roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
+        return roots[:, 1]
+
+    def signal_calc_test2(self, master):
+        """
+        calculate the expected signal level in an image with an expected snr and a measured background standard
+        deviation. Using SNR = S / sqrt(S + B)
+        :return: the expected signal level
+        """
+        snr_vals = master['Expected SNR'].values
+        background_flux = master['Stack Mean']
+        ones = np.ones_like(snr_vals)
+        coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
+        d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
+        roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
+        return roots[:, 1]
+
 
     def gen_snr_file(self):
 

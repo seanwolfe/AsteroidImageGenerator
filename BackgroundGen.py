@@ -83,7 +83,11 @@ class BackgroundGen:
         thresholding and stretching are applied to get post processed image.
         :return:
         """
-        self.image_file_path = self.get_random_file()
+        if 't' in self.configuration['options']:
+            self.image_file_path = os.path.join(self.configuration['test_set_directory'],
+                                                self.configuration['original_image'])
+        else:
+            self.image_file_path = self.get_random_file()
         if self.image_file_path:
             # open .fits file
             image_file = get_pkg_data_filename(self.image_file_path)
@@ -97,19 +101,22 @@ class BackgroundGen:
 
             self.input_image_dims = (header['NAXIS1'], header['NAXIS2'])
 
-            # preprocessing - interval and stretching, normalize [0,1]
-            interval = ManualInterval()
-            stretch = AsinhStretch(a=self.stretch_factor)
-            min_val, max_val = interval.get_limits(image_data)
-            # clip bright pixels according to percentage of max pixel value
-            cut = ManualInterval(min_val, self.interval_thresh * max_val)
-            clipped_data = cut(image_data)
-            # stretch data
-            self.post_processed_image = stretch(clipped_data)
-
+            self.post_processed_image = image_data
         else:
             raise ValueError("No files found in the directory.")
         return
+
+    def process(self, image_data):
+
+        # preprocessing - interval and stretching, normalize [0,1]
+        interval = ManualInterval()
+        stretch = AsinhStretch(a=self.stretch_factor)
+        min_val, max_val = interval.get_limits(image_data)
+        # clip bright pixels according to percentage of max pixel value
+        cut = ManualInterval(min_val, self.interval_thresh * max_val)
+        clipped_data = cut(image_data)
+        # stretch data
+        return stretch(clipped_data)
 
     def random_crop(self):
         """
@@ -121,13 +128,19 @@ class BackgroundGen:
         """
         w1, h1 = self.input_image_dims
         w2, h2 = self.output_image_dims
-        # Calculate the maximum valid starting pixel positions for the crop
-        max_h_start = h1 - h2
-        max_w_start = w1 - w2
+        if 't' in self.configuration['options']:
+            h_start = self.configuration['crop_start'][0]
+            w_start = self.configuration['crop_start'][1]
+            print(h_start)
+        else:
+            # Calculate the maximum valid starting pixel positions for the crop
+            max_h_start = h1 - h2
+            max_w_start = w1 - w2
 
-        # Randomly choose starting pixel positions for the crop
-        h_start = np.random.randint(0, max_h_start + 1)
-        w_start = np.random.randint(0, max_w_start + 1)
+            # Randomly choose starting pixel positions for the crop
+            h_start = np.random.randint(0, max_h_start + 1)
+            w_start = np.random.randint(0, max_w_start + 1)
+
         self.crop_start = (w_start, h_start)
 
         # Crop the image
@@ -166,7 +179,10 @@ class BackgroundGen:
         :return:
         """
         # Check existing stack folders and determine the next available folder name
-        stacks_directory = self.fake_im_directory
+        if 't' in self.configuration['options']:
+            stacks_directory = self.configuration['test_set_directory']
+        else:
+            stacks_directory = self.fake_im_directory
         existing_stacks = os.listdir(stacks_directory)
         next_stack_number = len(existing_stacks)
 
@@ -176,7 +192,7 @@ class BackgroundGen:
         os.makedirs(next_stack_folder)
 
         # Convert normalized array to pixel values (0-255)
-        pixel_values = (self.image_crop * 255).astype(np.uint8)
+        pixel_values = (self.image_crop / np.max(self.image_crop) * 255).astype(np.uint8)
 
         # Convert pixel values array to image
         image = Image.fromarray(pixel_values)
@@ -198,6 +214,7 @@ class BackgroundGen:
         standard deviation of image with masked sources.
         :return:
         """
+
         sigma_clip = SigmaClip(sigma=self.configuration['sigmaclip_sigma'],
                                maxiters=self.configuration['sigmaclip_maxiters'])
         threshold = detect_threshold(self.image_crop, nsigma=self.configuration['detect_threshold_nsigma'],
@@ -233,9 +250,12 @@ class BackgroundGen:
                 [os.path.basename(self.image_file_path), os.path.basename(self.stack_folder), self.mean, self.median,
                  self.std, self.crop_start])
 
-        stats_df = pd.DataFrame(stats, columns=['Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median',
-                                                'Stack Standard Deviation', 'Stack Crop Start'])
-        stats_df.to_csv(path_or_buf=self.configuration['stack_file_name'], sep=',', header=True, index=False)
+        if 't' in self.configuration['options']:
+            pass
+        else:
+            stats_df = pd.DataFrame(stats, columns=['Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median',
+                                                    'Stack Standard Deviation', 'Stack Crop Start'])
+            stats_df.to_csv(path_or_buf=self.configuration['stack_file_name'], sep=',', header=True, index=False)
         return
 
 
