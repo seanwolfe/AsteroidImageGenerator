@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
+import os
 
 
 class SignalGen:
@@ -78,7 +79,11 @@ class SignalGen:
         self.configuration = configs
 
         if 't' in self.configuration['options']:
-            pass
+            # see Muinonen et al 2010 for details on g_1 and g_2 from g_12
+            self.g_1 = pd.Series(self.configuration['g_12'][0]).apply(
+                lambda g_12: 0.9529 * g_12 + 0.02162 if g_12 >= 0.2 else 0.7527 * g_12 + 0.06164).values
+            self.g_2 = pd.Series(self.configuration['g_12'][0]).apply(
+                lambda g_12: -0.6125 * g_12 + 0.5572 if g_12 >= 0.2 else -0.9612 * g_12 + 0.6270).values
         else:
             self.dist_data = pd.read_csv(configs['distribution_file_name'], sep=',', header=0,
                                          names=configs['distribution_file_columns'])
@@ -100,6 +105,7 @@ class SignalGen:
         2010. Also given the specified boundary conditions on the derivatives.
         :return: Returns the phase values phi_1(alpha), phi_2(alpha) and phi_3(alpha) at the specified phase angles.
         """
+
         # points of the cubic splines to be fit
         alphas_phi_12 = self.configuration['alphas_phi_12']
         phi_1_values = self.configuration['phi_1_values']
@@ -117,9 +123,13 @@ class SignalGen:
         phi_3 = CubicSpline(alphas_phi_3, phi_3_values,
                             bc_type=((1, self.configuration['phi_3_derivative_initial'] * 2 * np.pi / 360),
                                      (1, self.configuration['phi_3_derivative_end'] * 2 * np.pi / 360)))
-        return phi_1(alphas), phi_2(alphas), phi_3(alphas)
 
-    def apparent_magnitude_calc(self, phi_1_s, phi_2_s, phi_3_s):
+        if 't' in self.configuration['options']:
+            return phi_1(alphas['phase angle']), phi_2(alphas['phase angle']), phi_3(alphas['phase angle'])
+        else:
+            return phi_1(alphas), phi_2(alphas), phi_3(alphas)
+
+    def apparent_magnitude_calc(self, phi_1_s, phi_2_s, phi_3_s, master=None):
         """
         calculate the apparent magnitude of the asteroid following the three parameter phase function, as well as a
         parameter including the distance relationship, the formula is similar to the manner in which JPL Horizons
@@ -132,19 +142,27 @@ class SignalGen:
         :return: the apparent magnitude
         """
         psi_s = self.g_1 * phi_1_s + self.g_2 * phi_2_s + (1 - self.g_1 - self.g_2) * phi_3_s
-        v_s = self.dist_data['H'] + 5 * np.log10(
-            self.dist_data['sun. ast. dist.'] * self.dist_data['obs. ast. dist.']) - 2.5 * np.log10(psi_s)
+        if 't' in self.configuration['options']:
+            v_s = master['H'] + 5 * np.log10(
+                master['sun. ast. dist.'] * master['obs. ast. dist.']) - 2.5 * np.log10(psi_s)
+        else:
+            v_s = self.dist_data['H'] + 5 * np.log10(
+                self.dist_data['sun. ast. dist.'] * self.dist_data['obs. ast. dist.']) - 2.5 * np.log10(psi_s)
         return v_s
 
-    def snr_calc(self, v_s_s):
+    def snr_calc(self, v_s_s, master=None):
         """
         Computes the SNR given a slightly modified version of equation 5 in Zhai et al. 2024, in order to remove
         dependency on total expsosure time of N_frames and just have it for a single frame.
         :return: signal to noise ratio
         """
 
-        fwhms = 2 * np.sqrt(2 * np.log(2)) * self.pixel_scale * self.dist_data['Sigma_g']
-        omegas = self.dist_data['omega'] / 3600
+        if 't' in self.configuration['options']:
+            fwhms = 2 * np.sqrt(2 * np.log(2)) * self.pixel_scale * master['Sigma_g']
+            omegas = master['omega'] / 3600
+        else:
+            fwhms = 2 * np.sqrt(2 * np.log(2)) * self.pixel_scale * self.dist_data['Sigma_g']
+            omegas = self.dist_data['omega'] / 3600
 
         # calc terms in overall SNR
         t1 = np.sqrt(self.dt) / (np.sqrt(np.pi / (2 * np.log(2))) * fwhms)
@@ -191,18 +209,29 @@ class SignalGen:
         """
         if 't' in self.configuration['options']:
             snr_vals = master['Expected SNR'].values
-            big_l = master['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
-            background_flux = (big_l + 2 * self.configuration['num_sigmas'] * master['Sigma_g']) * (
-                        self.configuration['num_sigmas'] * master['Sigma_g']) * master['Stack Mean']
+            # big_l = master['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale']) # veres
+            # background_flux = (big_l + 2 * self.configuration['num_sigmas'] * master['Sigma_g']) * (2 *
+            #             self.configuration['num_sigmas'] * master['Sigma_g']) * master['Stack Mean']
+            background_flux = (2 * self.configuration['num_sigmas'] * master['Sigma_g']) * (2 *  # zhai
+                                                                                            self.configuration[
+                                                                                                'num_sigmas'] * master[
+                                                                                                'Sigma_g']) * master[
+                                  'Stack Mean']
             ones = np.ones_like(snr_vals)
             coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
             d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
             roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
         else:
             snr_vals = master.values
-            big_l = self.dist_data['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
-            background_flux = (big_l + 2 * self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * (
-                    self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * self.stack_data['Stack Mean']
+            # big_l = self.dist_data['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])  # veres
+            # background_flux = (big_l + 2 * self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * ( 2 *
+            #         self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * self.stack_data['Stack Mean']
+            background_flux = (2 * self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * (2 *  # zhai
+                                                                                                    self.configuration[
+                                                                                                        'num_sigmas'] *
+                                                                                                    self.dist_data[
+                                                                                                        'Sigma_g']) * \
+                              self.stack_data['Stack Mean']
             ones = np.ones_like(snr_vals)
             coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
             d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
@@ -223,17 +252,27 @@ class SignalGen:
         roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
         return roots[:, 1]
 
-    def gen_snr_file(self):
+    def gen_snr_file(self, master=None):
 
-        phi_1_s, phi_2_s, phi_3_s = self.calc_phis(self.dist_data['phase angle'])
-        v_s_s = self.apparent_magnitude_calc(phi_1_s, phi_2_s, phi_3_s)
-        snr = self.snr_calc(v_s_s)
-        sig_level = self.signal_calc_test(snr)
-        data = {'Expected SNR': snr,
-                'Expected Signal': sig_level}
-        snr_data = pd.DataFrame(data)
-        snr_data.to_csv(self.configuration['snr_file_name'], sep=',', header=True, index=False)
-        return
+        if 't' in self.configuration['options']:
+            phi_1_s, phi_2_s, phi_3_s = self.calc_phis(master)
+            v_s_s = self.apparent_magnitude_calc(phi_1_s, phi_2_s, phi_3_s, master)
+            snr = self.snr_calc(v_s_s, master)
+            master['Expected SNR'] = snr
+            sig_level = self.signal_calc_test(master)
+            master['Expected SNR'] = snr
+            master['Expected Signal'] = sig_level
+            return master
+        else:
+            phi_1_s, phi_2_s, phi_3_s = self.calc_phis(self.dist_data['phase angle'])
+            v_s_s = self.apparent_magnitude_calc(phi_1_s, phi_2_s, phi_3_s)
+            snr = self.snr_calc(v_s_s)
+            sig_level = self.signal_calc_test(snr)
+            data = {'Expected SNR': snr,
+                    'Expected Signal': sig_level}
+            snr_data = pd.DataFrame(data)
+            snr_data.to_csv(self.configuration['snr_file_name'], sep=',', header=True, index=False)
+            return
 
 
 if __name__ == '__main__':
