@@ -1,11 +1,11 @@
 # User-relevant parameters
-num_stacks: 21                 # number of image stacks to be generated
-num_frames: 10                 # number of frames in each image stack
+num_stacks: 100000             # number of image stacks to be generated
+num_frames: 100                # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
 output_image_width: 224        # in pixels
 output_image_height: 224
-dt: 10                         # the single frame exposure time (seconds)
-slew_time: 2                   # time between exposures
+dt: 5                          # the single frame exposure time (seconds)
+slew_time: 1                   # time between exposures
 sig_rn: 1.6                    # the read noise specification of the telescope in electrons per pixel
 i_dark: 0.5                    # the dark current specification of the telescope in electrons per second pixel
 v_bg: 20.5                     # the background sky brightness for the telescope in magnitude per arcsec^2
@@ -21,7 +21,7 @@ stack_file_name: 'stack_stats_'                                          # the b
 sbd_file_name: 'NEA_database_ssb.csv'                                    # database of current NEAs downloaded from JPL site
 horizons_file_name: 'NEA_database_hor.csv'                               # queried asteroids from the sbd file, for elements that are needed
 real_image_directory: 'synthetic_tracklets/real_image_stacks'            # the directory where background images should be taken
-synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
+synthetic_image_directory: 'D:\AsteroidImages\synthetic image directory\training\samples_100000'  # where cropped backgrounds should be stored
 test_set_directory: 'synthetic_tracklets/test'                           # where the test files are located to see if the generator is performing correctly
 
 
@@ -47,7 +47,7 @@ horizons_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_
 # visualization, where if 'v' is specified, visualizations are NOT included. If 'm' is specified, then samples are
 # NOT generated. The 'q', 'm' and 'v' parameters can be specified in combinations but the exact results for each
 # combination is not verified. 't' is for using the test set file
-options: 'qt'
+options: 'v'
 
 # For some distributions, like the apparent motion, there may be some range over which you want the distribution to be
 # fitted, as there may be some outlier data from JPL Horizons. It is specified as a list of lists: [[min parameter 1,
@@ -101,3 +101,6 @@ original_image: '25.fit'  # image to be used for testing, should be in test fold
 crop_start: [405, 186]  # where this image will be cropped to make the sub image
 center_x: 112  # where the asteroid will initially be place
 center_y: 112
+
+# Specific to imagegen object#####################################################################################
+number_of_trys: 100  # the number of times the program will attempt to find a viable starting location that fits the asteroid in all frames
