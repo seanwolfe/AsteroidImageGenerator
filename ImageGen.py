@@ -93,13 +93,14 @@ class ImageGen:
         for idx, length in enumerate(lengths):
             center_x = self.configuration['output_image_width'] + max(lengths) + 100
             center_y = self.configuration['output_image_height'] + max(lengths) + 100
-            while (center_x + length * np.cos(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_width']) and (center_y + length * np.sin(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_height']):
+            trys = 0
+            while (center_x + length * np.cos(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_width']) and (center_y + length * np.sin(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_height']) and (trys < self.configuration['number_of_trys']):
+                trys += 1
                 try:
                     center_x = np.random.randint(length, self.configuration['output_image_width'] - length)
                     center_y = np.random.randint(length, self.configuration['output_image_height'] - length)
                 except ValueError:
-                    print(idx)
-                    print(dist_data['Theta'].iloc[idx])
+                    print("Asteroid center id:" + str(idx))
                     if dist_data['Theta'].iloc[idx] > 90:
                         if dist_data['Theta'].iloc[idx] > 180:
                             if dist_data['Theta'].iloc[idx] > 270:
