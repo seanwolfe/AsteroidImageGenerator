@@ -183,27 +183,30 @@ class BackgroundGen:
             stacks_directory = self.configuration['test_set_directory']
         else:
             stacks_directory = self.fake_im_directory
-        existing_stacks = os.listdir(stacks_directory)
-        next_stack_number = len(existing_stacks)
 
+        # these two lines were to create folders of stacks, but since then have switched to saving a single array per stack for memeory concerns
+        # existing_stacks = os.listdir(stacks_directory)
+        # next_stack_number = len(existing_stacks)
         # Create the next available stack folder
-        next_stack_folder = os.path.join(stacks_directory, f'stack{next_stack_number}')
-        self.stack_folder = next_stack_folder
-        os.makedirs(next_stack_folder)
-
+        # next_stack_folder = os.path.join(stacks_directory, f'stack{next_stack_number}')
+        # self.stack_folder = next_stack_folder
+        # os.makedirs(next_stack_folder)
         # Convert normalized array to pixel values (0-255)
-        pixel_values = (self.image_crop / np.max(self.image_crop) * 255).astype(np.uint8)
-
+        # pixel_values = (self.image_crop / np.max(self.image_crop) * 255).astype(np.uint8)
         # Convert pixel values array to image
-        image = Image.fromarray(pixel_values)
+        # image = Image.fromarray(pixel_values)
+        # Save the image as a JPEG file
+        # image.save(os.path.join(next_stack_folder, '0.jpg'))
+
+        # see how many stacks exist
+        next_stack_number = len([name for name in os.listdir(stacks_directory) if os.path.isfile(os.path.join(stacks_directory, name))])
+        next_stack_file = os.path.join(stacks_directory, f'background{next_stack_number}.npy')
+        self.stack_folder = next_stack_file  # this property used to be a folder when generating stacks as folders, but now is file path
 
         # Save the array as a NumPy file
-        np.save(os.path.join(next_stack_folder, '0.npy'), self.image_crop)
+        np.save(next_stack_file, self.image_crop)
 
-        # Save the image as a JPEG file
-        image.save(os.path.join(next_stack_folder, '0.jpg'))
-
-        print(f"Created stack folder '{next_stack_folder}' and saved array and image.\n")
+        print(f"Created background image for stack '{next_stack_file}' and saved array.\n")
 
         return
 
