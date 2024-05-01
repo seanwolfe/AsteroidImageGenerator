@@ -155,19 +155,19 @@ class ImageGen:
             signals = []
             final_images = []
             backgrounds = []
-            for jdx in range(0, self.configuration['num_frames']):
 
-                if 't' in self.configuration['options']:
-                    #     open image
-                    background_file = '0.npy'
-                    background_path = row['Saved as Stack']
-                    background_image = np.load(os.path.join(background_path, background_file))
-                else:
-                    #     open image
-                    background_path = self.configuration['synthetic_image_directory'] + '/' + row[
-                        'Saved as Stack']
-                    background_file = '0.npy'
-                    background_image = np.load(os.path.join(background_path, background_file))
+            if 't' in self.configuration['options']:
+                #     open image
+                background_file = '0.npy'
+                background_path = row['Saved as Stack']
+                background_image = np.load(os.path.join(background_path, background_file))
+            else:
+                #     open image
+                background_path = self.configuration['synthetic_image_directory']
+                background_file = row['Saved as Stack']
+                background_image = np.load(os.path.join(background_path, background_file))
+
+            for jdx in range(0, self.configuration['num_frames']):
 
                 backgrounds.append(background_image)
                 # make meshgrid corresponding to entire image
@@ -191,26 +191,24 @@ class ImageGen:
                 final_image = self.background.process(signal + background_image + noise)
                 final_images.append(final_image)
 
+                # previously, save every array and image individually, but for memory concerns, save just an overall concatenated array
                 # save image
                 # Convert normalized array to pixel values (0-255)
-                pixel_values = (final_image / np.max(final_image) * 255).astype(np.uint8)
-
+                # pixel_values = (final_image / np.max(final_image) * 255).astype(np.uint8)
                 # Convert pixel values array to image
-                image = Image.fromarray(pixel_values)
-
-                if 't' in self.configuration['options']:
+                # image = Image.fromarray(pixel_values)
+                # if 't' in self.configuration['options']:
                     # Save the array as a NumPy file
-                    np.save(os.path.join(background_path, '0{0}.npy'.format(jdx)), final_image)
+                    # np.save(os.path.join(background_path, '0{0}.npy'.format(jdx)), final_image)
 
                     # Save the image as a JPEG file
-                    image.save(os.path.join(background_path, '0{0}'.format(jdx)) + '.jpg')
-
-                else:
+                    # image.save(os.path.join(background_path, '0{0}'.format(jdx)) + '.jpg')
+                # else:
                     # Save the array as a NumPy file
-                    np.save(os.path.join(background_path, '{0}{1}.npy'.format(row['Saved as Stack'], jdx)), final_image)
+                    # np.save(os.path.join(background_path, '{0}{1}.npy'.format(row['Saved as Stack'], jdx)), final_image)
 
                     # Save the image as a JPEG file
-                    image.save(os.path.join(background_path, '{0}{1}'.format(row['Saved as Stack'], jdx)) + '.jpg')
+                    # image.save(os.path.join(background_path, '{0}{1}'.format(row['Saved as Stack'], jdx)) + '.jpg')
 
                 # view image and background
                 if 'v' in self.configuration['options']:
@@ -289,8 +287,9 @@ class ImageGen:
                     # ax2.add_patch(circle2)
                     # fig2.colorbar(im2)
 
-
-
+            final_image_array = np.concatenate(final_images, axis=0)
+            print(final_image_array.shape)
+            np.save(os.path.join(background_path, 'stack{0}.npy'.format(idx)), final_image_array)
 
             # print row
         return

@@ -1,6 +1,6 @@
 # User-relevant parameters
-num_stacks: 21                 # number of image stacks to be generated
-num_frames: 10                 # number of frames in each image stack
+num_stacks: 10                  # number of image stacks to be generated
+num_frames: 32                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
 output_image_width: 224        # in pixels
 output_image_height: 224
@@ -47,7 +47,7 @@ horizons_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_
 # visualization, where if 'v' is specified, visualizations are NOT included. If 'm' is specified, then samples are
 # NOT generated. The 'q', 'm' and 'v' parameters can be specified in combinations but the exact results for each
 # combination is not verified. 't' is for using the test set file
-options: 'qt'
+options: 'qvt'
 
 # For some distributions, like the apparent motion, there may be some range over which you want the distribution to be
 # fitted, as there may be some outlier data from JPL Horizons. It is specified as a list of lists: [[min parameter 1,
