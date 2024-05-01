@@ -10,6 +10,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from TestSetGen import TestSetGen
+import cv2
 
 
 class ImageGen:
@@ -288,9 +289,10 @@ class ImageGen:
                     # ax2.add_patch(circle2)
                     # fig2.colorbar(im2)
 
-            final_image_array = np.concatenate(final_images, axis=0)
-            print(final_image_array.shape)
+            scaled_image_array = (np.array(final_images) * 255).astype(np.uint8)
+            final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
             np.save(os.path.join(background_path, 'stack{0}.npy'.format(idx)), final_image_array)
+            self.video_file(final_image_array, 'stack{0}'.format(idx))
 
             # print row
         return
@@ -322,6 +324,25 @@ class ImageGen:
         snr_file_name = configuration['snr_file_name'] + str(num) + '.csv'
         center_file_name = configuration['center_file_name'] + str(num) + '.csv'
         return master_file_name, dist_file_name, stack_file_name, snr_file_name, center_file_name
+
+
+    @staticmethod
+    def video_file(video_array, name):
+        # Define the codec and create VideoWriter object
+        num_frames, height, width, channels = video_array.shape
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec used to compress the frames
+        video_filename = name + '.mp4'
+        video_out = cv2.VideoWriter(video_filename, fourcc, 2.0, (width, height))
+
+        # Write each frame to the video
+        for i in range(num_frames):
+            frame = video_array[i]
+            video_out.write(frame)  # Write the frame
+
+        # Release everything when job is finished
+        video_out.release()
+
+        return
 
 
 if __name__ == '__main__':

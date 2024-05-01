@@ -1,5 +1,5 @@
 # User-relevant parameters
-num_stacks: 100                  # number of image stacks to be generated
+num_stacks: 10                 # number of image stacks to be generated
 num_frames: 32                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
 output_image_width: 224        # in pixels
@@ -47,7 +47,7 @@ horizons_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_
 # visualization, where if 'v' is specified, visualizations are NOT included. If 'm' is specified, then samples are
 # NOT generated. The 'q', 'm' and 'v' parameters can be specified in combinations but the exact results for each
 # combination is not verified. 't' is for using the test set file
-options: 'qvt'
+options: 'qv'
 
 # For some distributions, like the apparent motion, there may be some range over which you want the distribution to be
 # fitted, as there may be some outlier data from JPL Horizons. It is specified as a list of lists: [[min parameter 1,
@@ -57,7 +57,7 @@ dist_range: None
 
 
 # Specific to the background generator BackgroundGen object ###########################################################
-interval_threshold: 0.15             # threshold applied in preprocessing the image
+interval_threshold: 0.05             # threshold applied in preprocessing the image
 stretch: 0.1                         # stretch factor applied to a Asinh stretch
 sigmaclip_sigma: 3.0                 # sigma argument of SigmaClip call
 sigmaclip_maxiters: 10               # maxiters argument of SigmaClip call
@@ -83,6 +83,10 @@ phi_3_derivative_end: 0                                                         
 num_sigmas: 3                                                                                                                    # number of sigmas to increase the aperture size by, background flux calculations
 
 signal_crop_threshold: 5  # this number multiplies sig_g to determine the size of the array that will contain the streak in each frame
+
+##### Imagegen.py specific arguments###################################################################################
+number_of_trys: 100
+
 
 
 # Specific to the TestSetGen object ##############################################################################
