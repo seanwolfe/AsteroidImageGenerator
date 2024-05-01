@@ -1,5 +1,5 @@
 # User-relevant parameters
-num_stacks: 10                  # number of image stacks to be generated
+num_stacks: 100                  # number of image stacks to be generated
 num_frames: 32                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
 output_image_width: 224        # in pixels
