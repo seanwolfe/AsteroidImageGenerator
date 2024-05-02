@@ -265,7 +265,7 @@ class DistribuGen:
         self.dist_range = dist_ranges
         return
 
-    def sample_gen(self, num_samples):
+    def sample_gen(self, total_samples, ratio):
         """
         Generates a specified number of random samples from the specified distribution names in 'dist_list'. The
         ranges will be limited by the 'dist_range' parameter. A .csv file is outputted with corresponding samples.
@@ -273,6 +273,7 @@ class DistribuGen:
         :return:
         """
         pre_append = []
+        num_samples = int(total_samples * ratio)
         for idx, dist in enumerate(self.dist_list[0:5]):
             # unpack
             # col_name = dist[0]
@@ -305,9 +306,14 @@ class DistribuGen:
 
         # for streak orientation and width, draw from uniform distribution and known gaussian distribution
         self.samples['Theta'] = np.random.uniform(0, 360, size=num_samples)
-        self.samples['Sigma_g'] = np.random.uniform(0.1, 5, size=num_samples)
+        self.samples['Sigma_g'] = np.random.uniform(0.1, 3, size=num_samples)
         self.samples['g_12'] = np.random.choice([0.58, 0.47], size=num_samples)  # asteroid types c and s
+        self.samples['Asteroid Present'] = [True for idx in range(0, num_samples)]
 
+        full_column_names = self.dist_names.copy()
+        false_data = pd.DataFrame(np.nan, index=np.arange(total_samples - num_samples), columns=full_column_names)
+        false_data['Asteroid Present'] = False
+        self.samples = pd.concat([self.samples, false_data], ignore_index=True)
         self.samples.to_csv(self.final_path, sep=',', header=True, index=False)
         return
 
@@ -322,7 +328,7 @@ class DistribuGen:
         matches = re.findall(r"\((.*?)\)", full_name)
         return matches[0]
 
-    def generate(self, num_samples=1):
+    def generate(self, num_samples=1, ratio=1.):
         """
         For generate a random number of samples according to the num_samples specified. First, if a file is not
         specified, the small body database is queried for known NEAs, and a .csv file is produced of a comma separated
@@ -357,7 +363,7 @@ class DistribuGen:
         if 'm' in self.options:
             pass
         else:
-            self.sample_gen(num_samples)
+            self.sample_gen(num_samples, ratio)
 
         if 'v' in self.options:
             pass
@@ -401,9 +407,9 @@ if __name__ == '__main__':
     #           'm': do not generate samples
     dis_gen = DistribuGen(fp_pre='NEA_database_ssb.csv', fp_post='NEA_database_hor.csv',
                           cnames_dist=['H', 'omega', 'obs. ast. dist.', 'sun. ast. dist.', 'phase angle'],
-                          options='s')
-    number_of_samples = 10000000
-    dis_gen.generate(number_of_samples)
+                          options='qv')
+    number_of_samples = 100
+    dis_gen.generate(number_of_samples, 0.1)
 
     # data = pd.read_csv('NEA_distribution_samples_10000000.csv', sep=',', header=0,
     #                    names=['H', 'omega', 'obs. ast. dist.', 'sun. ast. dist.', 'phase angle'])

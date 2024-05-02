@@ -85,15 +85,19 @@ class SignalGen:
             self.g_2 = pd.Series(self.configuration['g_12'][0]).apply(
                 lambda g_12: -0.6125 * g_12 + 0.5572 if g_12 >= 0.2 else -0.9612 * g_12 + 0.6270).values
         else:
-            self.dist_data = pd.read_csv(configs['distribution_file_name'], sep=',', header=0,
+            dist_file_path = os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']), configs['distribution_file_name'])
+            stack_file_path = os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                           configs['stack_file_name'])
+            self.dist_data = pd.read_csv(dist_file_path, sep=',', header=0,
                                          names=configs['distribution_file_columns'])
-            self.stack_data = pd.read_csv(configs['stack_file_name'], sep=',', header=0,
+            self.stack_data = pd.read_csv(stack_file_path, sep=',', header=0,
                                           names=configs['stack_file_columns'])
+            self.real_data = self.dist_data[self.dist_data['Asteroid Present'] == True]
 
             # see Muinonen et al 2010 for details on g_1 and g_2 from g_12
-            self.g_1 = pd.Series(self.dist_data['g_12']).apply(
+            self.g_1 = pd.Series(self.real_data['g_12']).apply(
                 lambda g_12: 0.9529 * g_12 + 0.02162 if g_12 >= 0.2 else 0.7527 * g_12 + 0.06164)
-            self.g_2 = pd.Series(self.dist_data['g_12']).apply(
+            self.g_2 = pd.Series(self.real_data['g_12']).apply(
                 lambda g_12: -0.6125 * g_12 + 0.5572 if g_12 >= 0.2 else -0.9612 * g_12 + 0.6270)
 
         return
@@ -146,8 +150,8 @@ class SignalGen:
             v_s = master['H'] + 5 * np.log10(
                 master['sun. ast. dist.'] * master['obs. ast. dist.']) - 2.5 * np.log10(psi_s)
         else:
-            v_s = self.dist_data['H'] + 5 * np.log10(
-                self.dist_data['sun. ast. dist.'] * self.dist_data['obs. ast. dist.']) - 2.5 * np.log10(psi_s)
+            v_s = self.real_data['H'] + 5 * np.log10(
+                self.real_data['sun. ast. dist.'] * self.real_data['obs. ast. dist.']) - 2.5 * np.log10(psi_s)
         return v_s
 
     def snr_calc(self, v_s_s, master=None):
@@ -161,8 +165,8 @@ class SignalGen:
             fwhms = 2 * np.sqrt(2 * np.log(2)) * self.pixel_scale * master['Sigma_g']
             omegas = master['omega'] / 3600
         else:
-            fwhms = 2 * np.sqrt(2 * np.log(2)) * self.pixel_scale * self.dist_data['Sigma_g']
-            omegas = self.dist_data['omega'] / 3600
+            fwhms = 2 * np.sqrt(2 * np.log(2)) * self.pixel_scale * self.real_data['Sigma_g']
+            omegas = self.real_data['omega'] / 3600
 
         # calc terms in overall SNR
         t1 = np.sqrt(self.dt) / (np.sqrt(np.pi / (2 * np.log(2))) * fwhms)
@@ -191,15 +195,14 @@ class SignalGen:
         :return: the expected signal level
         """
         snr_vals = snr.values
-        big_l = self.dist_data['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
-        print(self.stack_data['Stack Mean'])
-        print(self.dist_data['Sigma_g'] * 2 * np.sqrt(2 * np.pi) * big_l)
-        mean_vals = self.stack_data['Stack Mean'] * self.dist_data['Sigma_g'] * 2 * np.sqrt(2 * np.pi) * big_l
+        real_stack = self.stack_data.loc[self.real_data.index]
+        big_l = self.real_data['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
+        mean_vals = real_stack['Stack Mean'] * self.real_data['Sigma_g'] * 2 * np.sqrt(2 * np.pi) * big_l
         ones = np.ones_like(snr_vals)
         coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * mean_vals]).T
         d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
         roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
-        return roots[:, 1] + self.stack_data['Stack Mean']
+        return roots[:, 1] + real_stack['Stack Mean']
 
     def signal_calc_test(self, master):
         """
@@ -223,15 +226,16 @@ class SignalGen:
             roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
         else:
             snr_vals = master.values
+            real_stack = self.stack_data.loc[self.real_data.index]
             # big_l = self.dist_data['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])  # veres
             # background_flux = (big_l + 2 * self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * ( 2 *
             #         self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * self.stack_data['Stack Mean']
-            background_flux = (2 * self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * (2 *  # zhai
+            background_flux = (2 * self.configuration['num_sigmas'] * self.real_data['Sigma_g']) * (2 *  # zhai
                                                                                                     self.configuration[
                                                                                                         'num_sigmas'] *
-                                                                                                    self.dist_data[
+                                                                                                    self.real_data[
                                                                                                         'Sigma_g']) * \
-                              self.stack_data['Stack Mean']
+                              real_stack['Stack Mean']
             ones = np.ones_like(snr_vals)
             coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
             d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
@@ -264,14 +268,16 @@ class SignalGen:
             master['Expected Signal'] = sig_level
             return master
         else:
-            phi_1_s, phi_2_s, phi_3_s = self.calc_phis(self.dist_data['phase angle'])
+            phi_1_s, phi_2_s, phi_3_s = self.calc_phis(self.real_data['phase angle'])
             v_s_s = self.apparent_magnitude_calc(phi_1_s, phi_2_s, phi_3_s)
             snr = self.snr_calc(v_s_s)
             sig_level = self.signal_calc_test(snr)
             data = {'Expected SNR': snr,
                     'Expected Signal': sig_level}
             snr_data = pd.DataFrame(data)
-            snr_data.to_csv(self.configuration['snr_file_name'], sep=',', header=True, index=False)
+            snr_data_false = pd.DataFrame(np.nan, index=np.arange(len(self.dist_data[self.dist_data['Asteroid Present'] == False])), columns=['Expected SNR', 'Expected Signal'])
+            snr_data = pd.concat([snr_data, snr_data_false], ignore_index=True)
+            snr_data.to_csv(os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']), self.configuration['snr_file_name']), sep=',', header=True, index=False)
             return
 
 

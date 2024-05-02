@@ -1,5 +1,6 @@
 # User-relevant parameters
-num_stacks: 10                 # number of image stacks to be generated
+num_stacks: 1000                 # number of image stacks to be generated
+real_bogus_ratio: 0.5          # the ratio of stacks with asteroids: stack without asteroids
 num_frames: 32                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
 output_image_width: 224        # in pixels
@@ -27,11 +28,11 @@ test_set_directory: 'synthetic_tracklets/test'                           # where
 
 # column names of various files that are generated and read
 master_file_columns: [ 'H', 'omega', 'obs. ast. dist.', 'sun. ast. dist.', 'phase angle', 'Theta',
-                       'Sigma_g', 'g_12', 'Expected SNR', 'Expected Signal', 'Original Image', 'Saved as Stack', 'Stack Mean',
+                       'Sigma_g', 'g_12', 'Asteroid Present', 'Expected SNR', 'Expected Signal', 'Original Image', 'Saved as Stack', 'Stack Mean',
                        'Stack Median', 'Stack Standard Deviation', 'Stack Crop Start', 'Center x', 'Center y' ]
-distribution_file_columns: [ 'H', 'omega', 'obs. ast. dist.', 'sun. ast. dist.', 'phase angle', 'Theta', 'Sigma_g', 'g_12']
+distribution_file_columns: [ 'H', 'omega', 'obs. ast. dist.', 'sun. ast. dist.', 'phase angle', 'Theta', 'Sigma_g', 'g_12', 'Asteroid Present']
 stack_file_columns: [ 'Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median', 'Stack Standard Deviation',
-                      'Stack Crop Start' ]
+                      'Stack Crop Start']
 snr_file_columns: [ 'Expected SNR', 'Expected Signal' ]
 center_file_columns: [ 'Center x', 'Center y' ]
 
@@ -47,7 +48,7 @@ horizons_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_
 # visualization, where if 'v' is specified, visualizations are NOT included. If 'm' is specified, then samples are
 # NOT generated. The 'q', 'm' and 'v' parameters can be specified in combinations but the exact results for each
 # combination is not verified. 't' is for using the test set file
-options: 'qv'
+options: 'v'
 
 # For some distributions, like the apparent motion, there may be some range over which you want the distribution to be
 # fitted, as there may be some outlier data from JPL Horizons. It is specified as a list of lists: [[min parameter 1,
@@ -57,7 +58,7 @@ dist_range: None
 
 
 # Specific to the background generator BackgroundGen object ###########################################################
-interval_threshold: 0.05             # threshold applied in preprocessing the image
+interval_threshold: 0.1             # threshold applied in preprocessing the image
 stretch: 0.1                         # stretch factor applied to a Asinh stretch
 sigmaclip_sigma: 3.0                 # sigma argument of SigmaClip call
 sigmaclip_maxiters: 10               # maxiters argument of SigmaClip call
@@ -65,6 +66,7 @@ detect_threshold_nsigma: 2.0         # nsigma argument of detect_threshold call
 detect_sources_npixels: 10           # npixels argument of detect_sources call
 circular_footprint_radius: 10        # radius argument of circular_footprin call
 sigma_clipped_stats_sigma: 3.0       # sigma argument of sigma_clipped_stats call
+sigma_cutoff: 50.0                    # number of sigma to cut image above
 
 # Specific to signal generation SignalGen object ######################################################################
 

@@ -106,14 +106,14 @@ class BackgroundGen:
             raise ValueError("No files found in the directory.")
         return
 
-    def process(self, image_data):
+    def process(self, image_data, row):
 
         # preprocessing - interval and stretching, normalize [0,1]
         interval = ManualInterval()
         stretch = AsinhStretch(a=self.stretch_factor)
         min_val, max_val = interval.get_limits(image_data)
         # clip bright pixels according to percentage of max pixel value
-        cut = ManualInterval(min_val, self.interval_thresh * max_val)
+        cut = ManualInterval(min_val, row['Stack Mean'] + self.configuration['sigma_cutoff'] * row['Stack Standard Deviation'])
         clipped_data = cut(image_data)
         # stretch data
         return stretch(clipped_data)
@@ -182,7 +182,7 @@ class BackgroundGen:
         if 't' in self.configuration['options']:
             stacks_directory = self.configuration['test_set_directory']
         else:
-            stacks_directory = self.fake_im_directory
+            stacks_directory = os.path.join(self.fake_im_directory, str(self.configuration['num_stacks']), 'backgrounds')
 
         # these two lines were to create folders of stacks, but since then have switched to saving a single array per stack for memeory concerns
         # existing_stacks = os.listdir(stacks_directory)
@@ -199,7 +199,8 @@ class BackgroundGen:
         # image.save(os.path.join(next_stack_folder, '0.jpg'))
 
         # see how many stacks exist
-        next_stack_number = len([name for name in os.listdir(stacks_directory) if os.path.isfile(os.path.join(stacks_directory, name))])
+        next_stack_number = len(
+            [name for name in os.listdir(stacks_directory) if os.path.isfile(os.path.join(stacks_directory, name))])
         next_stack_file = os.path.join(stacks_directory, f'background{next_stack_number}.npy')
         self.stack_folder = next_stack_file  # this property used to be a folder when generating stacks as folders, but now is file path
 
@@ -258,7 +259,9 @@ class BackgroundGen:
         else:
             stats_df = pd.DataFrame(stats, columns=['Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median',
                                                     'Stack Standard Deviation', 'Stack Crop Start'])
-            stats_df.to_csv(path_or_buf=self.configuration['stack_file_name'], sep=',', header=True, index=False)
+            stats_df.to_csv(
+                os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']),
+                             self.configuration['stack_file_name']), sep=',', header=True, index=False)
         return
 
 

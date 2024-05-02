@@ -18,6 +18,7 @@ class ImageGen:
     def __init__(self, configs):
 
         num_stacks = configs['num_stacks']
+        ratio = configs['real_bogus_ratio']
         master_file, dist_file, stack_file, snr_file, center_file = self.file_names(configs)
         configs['master_file_name'] = master_file
         configs['distribution_file_name'] = dist_file
@@ -25,6 +26,15 @@ class ImageGen:
         configs['snr_file_name'] = snr_file
         configs['center_file_name'] = center_file
         self.configuration = configs
+        dist_file_path = os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']), dist_file)
+        stack_file_path = os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                       stack_file)
+        snr_file_path = os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                     snr_file)
+        center_file_path = os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                        center_file)
+        master_file_path = os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                        master_file)
         if 't' in configs['options']:
             # self.tester = TestSetGen(self.configuration)
             # self.master = self.tester.testset
@@ -35,55 +45,58 @@ class ImageGen:
             else:
                 raise ValueError("File Path should be specified, otherwise desired file name")
 
-            if os.path.exists(master_file):
+            if os.path.exists(master_file_path):
                 pass
             else:
-                if os.path.exists(dist_file):
+                if os.path.exists(dist_file_path):
                     pass
                 else:
                     dis_gen = DistribuGen(fp_pre=configs['sbd_file_name'], fp_post=configs['horizons_file_name'],
-                                          fp_final=dist_file,
+                                          fp_final=os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']), dist_file),
                                           cnames_ssb=configs['sbd_file_columns'],
                                           cnames_horizon=configs['horizons_file_columns'],
                                           cnames_dist=configs['distribution_file_columns'], options=configs['options'],
                                           dist_range=configs['dist_range'], observer=configs['observer'])
-                    dis_gen.generate(num_stacks)
-                if os.path.exists(stack_file):
+                    dis_gen.generate(num_stacks, ratio)
+                if os.path.exists(stack_file_path):
                     pass
                 else:
                     aigen = BackgroundGen(configs)
                     aigen.stack_generator(num_stacks)
-                if os.path.exists(snr_file):
+                if os.path.exists(snr_file_path):
                     pass
                 else:
                     siggen = SignalGen(configs)
                     siggen.gen_snr_file()
 
-                dist_data = pd.read_csv(dist_file, sep=',', header=0, names=configs['distribution_file_columns'])
-                stack_data = pd.read_csv(stack_file, sep=',', header=0, names=configs['stack_file_columns'])
-                snr_data = pd.read_csv(snr_file, sep=',', header=0, names=configs['snr_file_columns'])
 
-                if os.path.exists(center_file):
+                dist_data = pd.read_csv(dist_file_path, sep=',', header=0, names=configs['distribution_file_columns'])
+                stack_data = pd.read_csv(stack_file_path, sep=',', header=0, names=configs['stack_file_columns'])
+                snr_data = pd.read_csv(snr_file_path, sep=',', header=0, names=configs['snr_file_columns'])
+
+                if os.path.exists(center_file_path):
                     pass
                 else:
                     dist_data = self.streak_start_calc(dist_data)
 
-                center_data = pd.read_csv(center_file, sep=',', header=0, names=configs['center_file_columns'])
+                center_data = pd.read_csv(center_file_path, sep=',', header=0, names=configs['center_file_columns'])
                 master_data = pd.concat(
                     [dist_data.reset_index(drop=True), snr_data.reset_index(drop=True), stack_data.reset_index(drop=True),
                      center_data.reset_index(drop=True)], axis=1)
-                master_data.to_csv(master_file, sep=',', header=True, index=False)
-            self.master = pd.read_csv(master_file, sep=',', header=0, names=configs['master_file_columns'])
+
+                master_data.to_csv(master_file_path, sep=',', header=True, index=False)
+            self.master = pd.read_csv(master_file_path, sep=',', header=0, names=configs['master_file_columns'])
         self.background = BackgroundGen(configs)  # just to use some processing functions later
         return
 
     def streak_start_calc(self, dist_data):
 
+        dist_file_path = os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']), self.configuration['distribution_file_name'])
         max_omega = self.configuration['output_image_width'] / (self.configuration['num_frames'] * (
                 self.configuration['dt'] + self.configuration['slew_time']) / (
                                                                         3600 * self.configuration['pixel_scale']))
         dist_data.loc[dist_data['omega'] > max_omega * 3600, 'omega'] = max_omega * 3600
-        dist_data.to_csv(self.configuration['distribution_file_name'], sep=',', header=True, index=False)
+        dist_data.to_csv(dist_file_path, sep=',', header=True, index=False)
 
         lengths = dist_data['omega'] * self.configuration['num_frames'] * (
                 self.configuration['dt'] + self.configuration['slew_time']) / (
@@ -92,34 +105,38 @@ class ImageGen:
         centers_x = []
         centers_y = []
         for idx, length in enumerate(lengths):
-            center_x = self.configuration['output_image_width'] + max(lengths) + 100
-            center_y = self.configuration['output_image_height'] + max(lengths) + 100
-            trys = 0
-            while (center_x + length * np.cos(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_width']) and (center_y + length * np.sin(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_height']) and (trys < self.configuration['number_of_trys']):
-                trys += 1
-                try:
-                    center_x = np.random.randint(length, self.configuration['output_image_width'] - length)
-                    center_y = np.random.randint(length, self.configuration['output_image_height'] - length)
-                except ValueError:
-                    print("Asteroid center id:" + str(idx))
-                    if dist_data['Theta'].iloc[idx] > 90:
-                        if dist_data['Theta'].iloc[idx] > 180:
-                            if dist_data['Theta'].iloc[idx] > 270:
-                                center_x = np.random.randint(0, self.configuration[
-                                    'output_image_width'] / 8)
-                                center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
-                                                             self.configuration['output_image_height'])
+            if dist_data['Asteroid Present'].iloc[idx] == False:
+                center_x = 0
+                center_y = 0
+            else:
+                center_x = self.configuration['output_image_width'] + max(lengths) + 100
+                center_y = self.configuration['output_image_height'] + max(lengths) + 100
+                trys = 0
+                while (center_x + length * np.cos(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_width']) and (center_y + length * np.sin(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_height']) and (trys < self.configuration['number_of_trys']):
+                    trys += 1
+                    try:
+                        center_x = np.random.randint(length, self.configuration['output_image_width'] - length)
+                        center_y = np.random.randint(length, self.configuration['output_image_height'] - length)
+                    except ValueError:
+                        print("Asteroid center id:" + str(idx))
+                        if dist_data['Theta'].iloc[idx] > 90:
+                            if dist_data['Theta'].iloc[idx] > 180:
+                                if dist_data['Theta'].iloc[idx] > 270:
+                                    center_x = np.random.randint(0, self.configuration[
+                                        'output_image_width'] / 8)
+                                    center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
+                                                                 self.configuration['output_image_height'])
+                                else:
+                                    center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8,
+                                                                 self.configuration['output_image_width'])
+                                    center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
+                                                                 self.configuration['output_image_height'])
                             else:
-                                center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8,
-                                                             self.configuration['output_image_width'])
-                                center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
-                                                             self.configuration['output_image_height'])
+                                center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8, self.configuration['output_image_width'])
+                                center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
                         else:
-                            center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8, self.configuration['output_image_width'])
+                            center_x = np.random.randint(0, self.configuration['output_image_width'] / 8)
                             center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
-                    else:
-                        center_x = np.random.randint(0, self.configuration['output_image_width'] / 8)
-                        center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
 
             centers_x.append(center_x)
             centers_y.append(center_y)
@@ -129,7 +146,7 @@ class ImageGen:
         centers_x.reset_index(drop=True)
         centers_y.reset_index(drop=True)
         final_df = pd.concat([centers_x, centers_y], axis=1)
-        final_df.to_csv(self.configuration['center_file_name'], sep=',', header=True, index=False)
+        final_df.to_csv(os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']), self.configuration['center_file_name']), sep=',', header=True, index=False)
         return dist_data
 
     def track_centers(self, row):
@@ -167,30 +184,35 @@ class ImageGen:
                 #     open image
                 background_path = self.configuration['synthetic_image_directory']
                 background_file = row['Saved as Stack']
-                background_image = np.load(os.path.join(background_path, background_file))
+                background_image = np.load(os.path.join(background_path, str(self.configuration['num_stacks']), 'backgrounds', background_file))
 
             for jdx in range(0, self.configuration['num_frames']):
 
                 backgrounds.append(background_image)
-                # make meshgrid corresponding to entire image
-                x = np.linspace(0, self.configuration['output_image_width'] - 1,
-                                self.configuration['output_image_width'])
-                y = np.linspace(0, self.configuration['output_image_height'] - 1,
-                                self.configuration['output_image_height'])
-                big_x, big_y = np.meshgrid(x, y)
-
-                # calculate Gaussian at each pixel in image apply Jedicke
-                signal = self.gaussian_streak(big_x, big_y, row, centers_x[jdx], centers_y[jdx], big_l)
-                signals.append(signal)
 
                 # generate noise for background image
-                noise = np.random.normal(loc=0, scale=row['Stack Standard Deviation'], size=background_image.shape)
+                noise = np.random.normal(loc=0, scale=row['Stack Standard Deviation'],
+                                         size=background_image.shape)
 
-                if np.max(signal) > np.max(background_image):
-                    signal = signal * np.max(background_image) / np.max(signal)
+                if row['Asteroid Present'] == False:
+                    final_image = self.background.process(background_image + noise, row)
+                else:
+                    # make meshgrid corresponding to entire image
+                    x = np.linspace(0, self.configuration['output_image_width'] - 1,
+                                    self.configuration['output_image_width'])
+                    y = np.linspace(0, self.configuration['output_image_height'] - 1,
+                                    self.configuration['output_image_height'])
+                    big_x, big_y = np.meshgrid(x, y)
 
-                # add meshgrid to image
-                final_image = self.background.process(signal + background_image + noise)
+                    # calculate Gaussian at each pixel in image apply Jedicke
+                    signal = self.gaussian_streak(big_x, big_y, row, centers_x[jdx], centers_y[jdx], big_l)
+                    signals.append(signal)
+
+                    if np.max(signal) > np.max(background_image):
+                        signal = signal * np.max(background_image) / np.max(signal)
+
+                    final_image = self.background.process(signal + background_image + noise, row)
+
                 final_images.append(final_image)
 
                 # previously, save every array and image individually, but for memory concerns, save just an overall concatenated array
@@ -291,8 +313,8 @@ class ImageGen:
 
             scaled_image_array = (np.array(final_images) * 255).astype(np.uint8)
             final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
-            np.save(os.path.join(background_path, 'stack{0}.npy'.format(idx)), final_image_array)
-            self.video_file(final_image_array, 'stack{0}'.format(idx))
+            np.save(os.path.join(background_path, str(self.configuration['num_stacks']), 'stacks', 'stack{0}.npy'.format(idx)), final_image_array)
+            self.video_file(final_image_array, os.path.join(background_path, str(self.configuration['num_stacks']), 'vids', 'stack{0}'.format(idx)))
 
             # print row
         return
@@ -323,6 +345,14 @@ class ImageGen:
         stack_file_name = configuration['stack_file_name'] + str(num) + '.csv'
         snr_file_name = configuration['snr_file_name'] + str(num) + '.csv'
         center_file_name = configuration['center_file_name'] + str(num) + '.csv'
+        if not os.path.exists(os.path.join(configuration['synthetic_image_directory'], str(num))):
+            os.mkdir(os.path.join(configuration['synthetic_image_directory'], str(num)))
+        if not os.path.exists(os.path.join(configuration['synthetic_image_directory'], str(num), 'backgrounds')):
+            os.mkdir(os.path.join(configuration['synthetic_image_directory'], str(num), 'backgrounds'))
+        if not os.path.exists(os.path.join(configuration['synthetic_image_directory'], str(num), 'stacks')):
+            os.mkdir(os.path.join(configuration['synthetic_image_directory'], str(num), 'stacks'))
+        if not os.path.exists(os.path.join(configuration['synthetic_image_directory'], str(num), 'vids')):
+            os.mkdir(os.path.join(configuration['synthetic_image_directory'], str(num), 'vids'))
         return master_file_name, dist_file_name, stack_file_name, snr_file_name, center_file_name
 
 
