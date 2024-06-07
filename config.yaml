@@ -1,5 +1,5 @@
 # User-relevant parameters
-num_stacks: 1000                 # number of image stacks to be generated
+num_stacks: 100000                # number of image stacks to be generated
 real_bogus_ratio: 0.5          # the ratio of stacks with asteroids: stack without asteroids
 num_frames: 32                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
@@ -22,7 +22,8 @@ stack_file_name: 'stack_stats_'                                          # the b
 sbd_file_name: 'NEA_database_ssb.csv'                                    # database of current NEAs downloaded from JPL site
 horizons_file_name: 'NEA_database_hor.csv'                               # queried asteroids from the sbd file, for elements that are needed
 real_image_directory: 'synthetic_tracklets/real_image_stacks'            # the directory where background images should be taken
-synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
+#synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
+synthetic_image_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data'
 test_set_directory: 'synthetic_tracklets/test'                           # where the test files are located to see if the generator is performing correctly
 
 
@@ -94,6 +95,7 @@ number_of_trys: 100
 # Specific to the TestSetGen object ##############################################################################
 # the values of the quantities in the following lists will be used to permute every single combination in order
 # to generate a test set which only varies one quantity at a time
+########### for set 1 ##############################
 h: [20, 25, 30, 35]  # absolute magnitudes, because the SNR is being varied directly, this quantity is irrelevant
 r_oa: [0.01, 0.8]  # observer asteroid distance, because the SNR is being varied directly, this quantity is irrelevant
 r_sa: [1, 1.8]  # sun asteroid distance, because the SNR is being varied directly, this quantity is irrelevant
@@ -107,3 +109,13 @@ original_image: '25.fit'  # image to be used for testing, should be in test fold
 crop_start: [405, 186]  # where this image will be cropped to make the sub image
 center_x: 112  # where the asteroid will initially be place
 center_y: 112
+
+########## for set 2 #############################
+num_samples_per_bin: 10
+num_bins: 20
+min_omega: 1
+max_omega: 10000
+min_apparent_magnitude: 20
+max_apparent_magnitude: 30
+min_sigma_g: 0.1
+max_sigma_g: 3.5
