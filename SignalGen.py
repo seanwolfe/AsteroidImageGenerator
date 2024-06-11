@@ -181,6 +181,7 @@ class SignalGen:
         # t4 = s.copy()
         # t4[s['reductions'] >= 2] = np.sqrt(np.pi) / (2 * s)
 
+        pd.set_option('display.max_rows', None)
         t4 = s.applymap(lambda x: np.sqrt(np.pi) / (2 * x) if x >= 2 else 1 / (1 + x ** 2 / 3))
 
         # terms 3 and 4 represent the sensitivity in Zhai et al. 2024.
@@ -212,16 +213,19 @@ class SignalGen:
         """
         if 't' in self.configuration['options']:
             snr_vals = master['Expected SNR'].values
-            # big_l = master['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale']) # veres
+            big_l = master['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale']) # veres
             # background_flux = (big_l + 2 * self.configuration['num_sigmas'] * master['Sigma_g']) * (2 *
             #             self.configuration['num_sigmas'] * master['Sigma_g']) * master['Stack Mean']
+
             background_flux = (2 * self.configuration['num_sigmas'] * master['Sigma_g']) * (2 *  # zhai
                                                                                             self.configuration[
                                                                                                 'num_sigmas'] * master[
                                                                                                 'Sigma_g']) * master[
                                   'Stack Mean']
+
             ones = np.ones_like(snr_vals)
             coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
+
             d = coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True)
             roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
         else:
@@ -256,11 +260,15 @@ class SignalGen:
         roots = -0.5 * (coefficients[:, 1:-1] + [1, -1] * np.emath.sqrt(d)) / coefficients[:, :1]
         return roots[:, 1]
 
-    def gen_snr_file(self, master=None):
+    def gen_snr_file(self, master=None, v_s_s=None):
 
         if 't' in self.configuration['options']:
-            phi_1_s, phi_2_s, phi_3_s = self.calc_phis(master)
-            v_s_s = self.apparent_magnitude_calc(phi_1_s, phi_2_s, phi_3_s, master)
+            if '2' in self.configuration['options']:
+                pass
+            else:
+                phi_1_s, phi_2_s, phi_3_s = self.calc_phis(master)
+                v_s_s = self.apparent_magnitude_calc(phi_1_s, phi_2_s, phi_3_s, master)
+
             snr = self.snr_calc(v_s_s, master)
             master['Expected SNR'] = snr
             sig_level = self.signal_calc_test(master)

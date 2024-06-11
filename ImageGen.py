@@ -9,7 +9,6 @@ import scipy
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from TestSetGen import TestSetGen
 import cv2
 
 
@@ -36,9 +35,15 @@ class ImageGen:
         master_file_path = os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
                                         master_file)
         if 't' in configs['options']:
-            # self.tester = TestSetGen(self.configuration)
-            # self.master = self.tester.testset
-            self.master = pd.read_csv('synthetic_tracklets/test/testset.csv', sep=',', header=0, names=self.configuration['master_file_columns'])
+            if '2' not in configs['options']:
+                from TestSetGen import TestSetGen
+                self.tester = TestSetGen(self.configuration)
+            if '2' in configs['options']:
+                self.master = pd.read_csv(os.path.join(self.configuration['test_set_directory'], 'testset.csv'), sep=',', header=0,
+                                          names=self.configuration['master_file_columns'])
+            else:
+                # self.master = self.tester.testset
+                self.master = pd.read_csv('synthetic_tracklets/test/testset.csv', sep=',', header=0, names=self.configuration['master_file_columns'])
         else:
             if master_file and dist_file and stack_file and snr_file and center_file:
                 pass
@@ -77,7 +82,7 @@ class ImageGen:
                 if os.path.exists(center_file_path):
                     pass
                 else:
-                    dist_data = self.streak_start_calc(dist_data)
+                    dist_data = self.streak_start_calc(dist_data=dist_data)
 
                 center_data = pd.read_csv(center_file_path, sep=',', header=0, names=configs['center_file_columns'])
                 master_data = pd.concat(
@@ -89,65 +94,118 @@ class ImageGen:
         self.background = BackgroundGen(configs)  # just to use some processing functions later
         return
 
-    def streak_start_calc(self, dist_data):
-
-        dist_file_path = os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']), self.configuration['distribution_file_name'])
+    def streak_start_calc(self, dist_data=None, master=None):
         max_omega = self.configuration['output_image_width'] / (self.configuration['num_frames'] * (
                 self.configuration['dt'] + self.configuration['slew_time']) / (
                                                                         3600 * self.configuration['pixel_scale']))
-        dist_data.loc[dist_data['omega'] > max_omega * 3600, 'omega'] = max_omega * 3600
-        dist_data.to_csv(dist_file_path, sep=',', header=True, index=False)
+        if 't2' in self.configuration['options']:
+            master.loc[master['omega'] > max_omega * 3600, 'omega'] = max_omega * 3600
+            lengths = master['omega'] * self.configuration['num_frames'] * (
+                    self.configuration['dt'] + self.configuration['slew_time']) / (
+                              3600 * self.configuration['pixel_scale'])
 
-        lengths = dist_data['omega'] * self.configuration['num_frames'] * (
-                self.configuration['dt'] + self.configuration['slew_time']) / (
-                          3600 * self.configuration['pixel_scale'])
-
-        centers_x = []
-        centers_y = []
-        for idx, length in enumerate(lengths):
-            if dist_data['Asteroid Present'].iloc[idx] == False:
-                center_x = 0
-                center_y = 0
-            else:
-                center_x = self.configuration['output_image_width'] + max(lengths) + 100
-                center_y = self.configuration['output_image_height'] + max(lengths) + 100
-                trys = 0
-                while (center_x + length * np.cos(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_width']) and (center_y + length * np.sin(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_height']) and (trys < self.configuration['number_of_trys']):
-                    trys += 1
-                    try:
-                        center_x = np.random.randint(length, self.configuration['output_image_width'] - length)
-                        center_y = np.random.randint(length, self.configuration['output_image_height'] - length)
-                    except ValueError:
-                        print("Asteroid center id:" + str(idx))
-                        if dist_data['Theta'].iloc[idx] > 90:
-                            if dist_data['Theta'].iloc[idx] > 180:
-                                if dist_data['Theta'].iloc[idx] > 270:
-                                    center_x = np.random.randint(0, self.configuration[
-                                        'output_image_width'] / 8)
-                                    center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
-                                                                 self.configuration['output_image_height'])
+            centers_x = []
+            centers_y = []
+            for idx, length in enumerate(lengths):
+                if master['Asteroid Present'].iloc[idx] == False:
+                    center_x = 0
+                    center_y = 0
+                else:
+                    center_x = self.configuration['output_image_width'] + max(lengths) + 100
+                    center_y = self.configuration['output_image_height'] + max(lengths) + 100
+                    trys = 0
+                    while (center_x + length * np.cos(np.deg2rad(master['Theta'].iloc[idx])) > self.configuration[
+                        'output_image_width']) and (
+                            center_y + length * np.sin(np.deg2rad(master['Theta'].iloc[idx])) > self.configuration[
+                        'output_image_height']) and (trys < self.configuration['number_of_trys']):
+                        trys += 1
+                        try:
+                            center_x = np.random.randint(length, self.configuration['output_image_width'] - length)
+                            center_y = np.random.randint(length, self.configuration['output_image_height'] - length)
+                        except ValueError:
+                            print("Asteroid center id:" + str(idx))
+                            if master['Theta'].iloc[idx] > 90:
+                                if master['Theta'].iloc[idx] > 180:
+                                    if master['Theta'].iloc[idx] > 270:
+                                        center_x = np.random.randint(0, self.configuration[
+                                            'output_image_width'] / 8)
+                                        center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
+                                                                     self.configuration['output_image_height'])
+                                    else:
+                                        center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8,
+                                                                     self.configuration['output_image_width'])
+                                        center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
+                                                                     self.configuration['output_image_height'])
                                 else:
                                     center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8,
                                                                  self.configuration['output_image_width'])
-                                    center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
-                                                                 self.configuration['output_image_height'])
+                                    center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
                             else:
-                                center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8, self.configuration['output_image_width'])
+                                center_x = np.random.randint(0, self.configuration['output_image_width'] / 8)
                                 center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
-                        else:
-                            center_x = np.random.randint(0, self.configuration['output_image_width'] / 8)
-                            center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
 
-            centers_x.append(center_x)
-            centers_y.append(center_y)
+                centers_x.append(center_x)
+                centers_y.append(center_y)
 
-        centers_x = pd.DataFrame(centers_x, columns=['Center x'])
-        centers_y = pd.DataFrame(centers_y, columns=['Center y'])
-        centers_x.reset_index(drop=True)
-        centers_y.reset_index(drop=True)
-        final_df = pd.concat([centers_x, centers_y], axis=1)
-        final_df.to_csv(os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']), self.configuration['center_file_name']), sep=',', header=True, index=False)
-        return dist_data
+            master['Center x'] = centers_x
+            master['Center y'] = centers_y
+            return master
+        else:
+            dist_file_path = os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']), self.configuration['distribution_file_name'])
+
+            dist_data.loc[dist_data['omega'] > max_omega * 3600, 'omega'] = max_omega * 3600
+            dist_data.to_csv(dist_file_path, sep=',', header=True, index=False)
+
+            lengths = dist_data['omega'] * self.configuration['num_frames'] * (
+                    self.configuration['dt'] + self.configuration['slew_time']) / (
+                              3600 * self.configuration['pixel_scale'])
+
+            centers_x = []
+            centers_y = []
+            for idx, length in enumerate(lengths):
+                if dist_data['Asteroid Present'].iloc[idx] == False:
+                    center_x = 0
+                    center_y = 0
+                else:
+                    center_x = self.configuration['output_image_width'] + max(lengths) + 100
+                    center_y = self.configuration['output_image_height'] + max(lengths) + 100
+                    trys = 0
+                    while (center_x + length * np.cos(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_width']) and (center_y + length * np.sin(np.deg2rad(dist_data['Theta'].iloc[idx])) > self.configuration['output_image_height']) and (trys < self.configuration['number_of_trys']):
+                        trys += 1
+                        try:
+                            center_x = np.random.randint(length, self.configuration['output_image_width'] - length)
+                            center_y = np.random.randint(length, self.configuration['output_image_height'] - length)
+                        except ValueError:
+                            print("Asteroid center id:" + str(idx))
+                            if dist_data['Theta'].iloc[idx] > 90:
+                                if dist_data['Theta'].iloc[idx] > 180:
+                                    if dist_data['Theta'].iloc[idx] > 270:
+                                        center_x = np.random.randint(0, self.configuration[
+                                            'output_image_width'] / 8)
+                                        center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
+                                                                     self.configuration['output_image_height'])
+                                    else:
+                                        center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8,
+                                                                     self.configuration['output_image_width'])
+                                        center_y = np.random.randint(7 * self.configuration['output_image_height'] / 8,
+                                                                     self.configuration['output_image_height'])
+                                else:
+                                    center_x = np.random.randint(7 * self.configuration['output_image_width'] / 8, self.configuration['output_image_width'])
+                                    center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
+                            else:
+                                center_x = np.random.randint(0, self.configuration['output_image_width'] / 8)
+                                center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
+
+                centers_x.append(center_x)
+                centers_y.append(center_y)
+
+            centers_x = pd.DataFrame(centers_x, columns=['Center x'])
+            centers_y = pd.DataFrame(centers_y, columns=['Center y'])
+            centers_x.reset_index(drop=True)
+            centers_y.reset_index(drop=True)
+            final_df = pd.concat([centers_x, centers_y], axis=1)
+            final_df.to_csv(os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']), self.configuration['center_file_name']), sep=',', header=True, index=False)
+            return dist_data
 
     def track_centers(self, row):
 
@@ -176,10 +234,15 @@ class ImageGen:
             backgrounds = []
 
             if 't' in self.configuration['options']:
-                #     open image
-                background_file = '0.npy'
-                background_path = row['Saved as Stack']
-                background_image = np.load(os.path.join(background_path, background_file))
+                if '2' in self.configuration['options']:
+                    background_path = self.configuration['test_set_directory']
+                    background_file = row['Saved as Stack']
+                    background_image = np.load(os.path.join(background_path, 'backgrounds', background_file))
+                else:
+                    #     open image
+                    background_file = '0.npy'
+                    background_path = row['Saved as Stack']
+                    background_image = np.load(os.path.join(background_path, background_file))
             else:
                 #     open image
                 background_path = self.configuration['synthetic_image_directory']
@@ -206,12 +269,16 @@ class ImageGen:
 
                     # calculate Gaussian at each pixel in image apply Jedicke
                     signal = self.gaussian_streak(big_x, big_y, row, centers_x[jdx], centers_y[jdx], big_l)
+                    print(np.max(signal))
                     signals.append(signal)
 
                     if np.max(signal) > np.max(background_image):
                         signal = signal * np.max(background_image) / np.max(signal)
 
-                    final_image = self.background.process(signal + background_image + noise, row)
+                    noise_mat = np.random.normal(loc=0, scale=1, size=signal.shape)
+                    # final_image = self.background.process(signal + background_image + np.sqrt(signal + background_image) * noise_mat, row)
+                    final_image = self.background.process(
+                        signal + background_image + noise, row)
 
                 final_images.append(final_image)
 
@@ -313,8 +380,15 @@ class ImageGen:
 
             scaled_image_array = (np.array(final_images) * 255).astype(np.uint8)
             final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
-            np.save(os.path.join(background_path, str(self.configuration['num_stacks']), 'stacks', 'stack{0}.npy'.format(idx)), final_image_array)
-            self.video_file(final_image_array, os.path.join(background_path, str(self.configuration['num_stacks']), 'vids', 'stack{0}'.format(idx)))
+            if '2' in self.configuration['options']:
+                np.save(os.path.join(background_path, 'stacks', 'stack{0}.npy'.format(idx)), final_image_array)
+                self.video_file(final_image_array, os.path.join(background_path, 'vids', 'stack{0}'.format(idx)))
+            else:
+                np.save(os.path.join(background_path, str(self.configuration['num_stacks']), 'stacks',
+                                     'stack{0}.npy'.format(idx)), final_image_array)
+                self.video_file(final_image_array,
+                                os.path.join(background_path, str(self.configuration['num_stacks']), 'vids',
+                                             'stack{0}'.format(idx)))
 
             # print row
         return
@@ -334,8 +408,8 @@ class ImageGen:
         # statistical noise
         # Generate a vector with values sampled from a normal distribution
         # with mean 0 and unit variance
-        new_vector = np.random.normal(loc=0, scale=1, size=s_xy.shape)
-        return s_xy + new_vector * np.sqrt(s_xy)
+        # new_vector = np.random.normal(loc=0, scale=1, size=s_xy.shape)
+        return s_xy #+ new_vector * np.sqrt(s_xy)
 
     @staticmethod
     def file_names(configuration):

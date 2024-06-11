@@ -84,7 +84,10 @@ class BackgroundGen:
         :return:
         """
         if 't' in self.configuration['options']:
-            self.image_file_path = os.path.join(self.configuration['test_set_directory'],
+            if '2' in self.configuration['options']:
+                self.image_file_path = self.get_random_file()
+            else:
+                self.image_file_path = os.path.join(self.configuration['test_set_directory'],
                                                 self.configuration['original_image'])
         else:
             self.image_file_path = self.get_random_file()
@@ -110,10 +113,10 @@ class BackgroundGen:
 
         # preprocessing - interval and stretching, normalize [0,1]
         interval = ManualInterval()
-        stretch = AsinhStretch(a=self.stretch_factor)
+        stretch = AsinhStretch(a=0.5)
         min_val, max_val = interval.get_limits(image_data)
         # clip bright pixels according to percentage of max pixel value
-        cut = ManualInterval(min_val, row['Stack Mean'] + self.configuration['sigma_cutoff'] * row['Stack Standard Deviation'])
+        cut = ManualInterval(row['Stack Mean'] - self.configuration['sigma_cutoff_bottom'] * row['Stack Standard Deviation'], row['Stack Mean'] + self.configuration['sigma_cutoff_top'] * row['Stack Standard Deviation'])
         clipped_data = cut(image_data)
         # stretch data
         return stretch(clipped_data)
@@ -128,10 +131,9 @@ class BackgroundGen:
         """
         w1, h1 = self.input_image_dims
         w2, h2 = self.output_image_dims
-        if 't' in self.configuration['options']:
+        if 't' in self.configuration['options'] and '2' not in self.configuration['options']:
             h_start = self.configuration['crop_start'][0]
             w_start = self.configuration['crop_start'][1]
-            print(h_start)
         else:
             # Calculate the maximum valid starting pixel positions for the crop
             max_h_start = h1 - h2
@@ -180,7 +182,7 @@ class BackgroundGen:
         """
         # Check existing stack folders and determine the next available folder name
         if 't' in self.configuration['options']:
-            stacks_directory = self.configuration['test_set_directory']
+            stacks_directory = os.path.join(self.configuration['test_set_directory'], 'backgrounds')
         else:
             stacks_directory = os.path.join(self.fake_im_directory, str(self.configuration['num_stacks']), 'backgrounds')
 
@@ -254,15 +256,20 @@ class BackgroundGen:
                 [os.path.basename(self.image_file_path), os.path.basename(self.stack_folder), self.mean, self.median,
                  self.std, self.crop_start])
 
-        if 't' in self.configuration['options']:
+        if 't' in self.configuration['options'] and '2' not in self.configuration['options']:
             pass
         else:
             stats_df = pd.DataFrame(stats, columns=['Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median',
-                                                    'Stack Standard Deviation', 'Stack Crop Start'])
-            stats_df.to_csv(
+                                                      'Stack Standard Deviation', 'Stack Crop Start'])
+            if '2' not in self.configuration['options']:
+                stats_df.to_csv(
                 os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']),
                              self.configuration['stack_file_name']), sep=',', header=True, index=False)
-        return
+
+        if '2' in self.configuration['options']:
+            return stats_df
+        else:
+            return
 
 
 if __name__ == '__main__':
