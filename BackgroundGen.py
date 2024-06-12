@@ -13,6 +13,7 @@ from PIL import Image
 from astropy.stats import sigma_clipped_stats, SigmaClip
 from photutils.segmentation import detect_threshold, detect_sources
 from photutils.utils import circular_footprint
+import yaml
 
 plt.style.use(astropy_mpl_style)
 
@@ -169,6 +170,7 @@ class BackgroundGen:
 
         im = ax.imshow(image_data, cmap='gray')
         fig.colorbar(im)
+        plt.show()
         return
 
     def save_image(self):
@@ -263,17 +265,19 @@ class BackgroundGen:
 
 
 if __name__ == '__main__':
-    aigen = BackgroundGen()
-    # for i in range(0, 5):
-    #     aigen.open_image()
-    #     aigen.random_crop()
-    #     aigen.view_image(aigen.original_image)
-    # aigen.view_image(aigen.post_processed_image)
-    # aigen.view_image(aigen.image_crop)
-    # aigen.save_image()
-    # aigen.background_stats()
+    with open('config.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+
+    aigen = BackgroundGen(config)
+    for i in range(0, 5):
+        aigen.open_image()
+        aigen.random_crop()
+        aigen.view_image(aigen.original_image)
+        aigen.view_image(aigen.post_processed_image)
+        aigen.view_image(aigen.image_crop)
+        aigen.save_image()
+        aigen.background_stats()
     aigen.stack_generator(10000)
-    plt.show()
 
     # open a random real image (.FITS file) that will be used to generate a synthetic tracklet
     # with fits.open('synthetic_tracklets/tycho_tracker/raw/ds1/1.fit') as hdul:

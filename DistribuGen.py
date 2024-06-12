@@ -306,7 +306,7 @@ class DistribuGen:
         # for streak orientation and width, draw from uniform distribution and known gaussian distribution
         self.samples['Theta'] = np.random.uniform(0, 360, size=num_samples)
         self.samples['Sigma_g'] = np.random.uniform(0.1, 5, size=num_samples)
-        self.samples['g_12'] = np.random.choice([0.58, 0.47], size=num_samples)  # asteroid types c and s
+        self.samples['g_12'] = np.random.choice([0.64, 0.41], size=num_samples)  # asteroid types c and s
 
         self.samples.to_csv(self.final_path, sep=',', header=True, index=False)
         return

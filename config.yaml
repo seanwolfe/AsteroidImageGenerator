@@ -47,7 +47,7 @@ horizons_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_
 # visualization, where if 'v' is specified, visualizations are NOT included. If 'm' is specified, then samples are
 # NOT generated. The 'q', 'm' and 'v' parameters can be specified in combinations but the exact results for each
 # combination is not verified. 't' is for using the test set file
-options: 'qvt'
+options: 's'
 
 # For some distributions, like the apparent motion, there may be some range over which you want the distribution to be
 # fitted, as there may be some outlier data from JPL Horizons. It is specified as a list of lists: [[min parameter 1,
@@ -63,7 +63,7 @@ sigmaclip_sigma: 3.0                 # sigma argument of SigmaClip call
 sigmaclip_maxiters: 10               # maxiters argument of SigmaClip call
 detect_threshold_nsigma: 2.0         # nsigma argument of detect_threshold call
 detect_sources_npixels: 10           # npixels argument of detect_sources call
-circular_footprint_radius: 10        # radius argument of circular_footprin call
+circular_footprint_radius: 10        # radius argument of circular_footprint call
 sigma_clipped_stats_sigma: 3.0       # sigma argument of sigma_clipped_stats call
 
 # Specific to signal generation SignalGen object ######################################################################
