@@ -182,9 +182,9 @@ class BackgroundGen:
         """
         # Check existing stack folders and determine the next available folder name
         if 't' in self.configuration['options']:
-            stacks_directory = os.path.join(self.configuration['test_set_directory'], 'backgrounds')
+            stacks_directory = os.path.join(self.fake_im_directory, str(self.configuration['num_stacks']), 'backgrounds', 'test')
         else:
-            stacks_directory = os.path.join(self.fake_im_directory, str(self.configuration['num_stacks']), 'backgrounds')
+            stacks_directory = os.path.join(self.fake_im_directory, str(self.configuration['num_stacks']), 'backgrounds', self.configuration['current_set'])
 
         # these two lines were to create folders of stacks, but since then have switched to saving a single array per stack for memeory concerns
         # existing_stacks = os.listdir(stacks_directory)
