@@ -26,7 +26,9 @@ class ImageGen:
             file.write(yaml_contents_str)
 
         # Generate test set
-        if os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']), 'testset.csv'):
+        if os.path.exists(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']), 'testset.csv')):
+            pass
+        else:
             from TestSetGen import TestSetGen
             self.configuration['options'] = self.configuration['options'] + 't2'
             self.tester = TestSetGen(self.configuration)
@@ -102,6 +104,32 @@ class ImageGen:
                     [dist_data.reset_index(drop=True), snr_data.reset_index(drop=True), stack_data.reset_index(drop=True),
                      center_data.reset_index(drop=True)], axis=1)
 
+
+                if 'train' in sets[idx]:
+                    # filter data to desired SNR
+                    master_data_70 = master_data[master_data['Expected SNR'] >= 70]
+                    master_data_60 = master_data[(master_data['Expected SNR'] < 70) & (master_data['Expected SNR'] >= 60)]
+                    master_data_50 = master_data[(master_data['Expected SNR'] < 60) & (master_data['Expected SNR'] >= 50)]
+                    master_data_40 = master_data[(master_data['Expected SNR'] < 50) & (master_data['Expected SNR'] >= 40)]
+                    master_data_30 = master_data[(master_data['Expected SNR'] < 40) & (master_data['Expected SNR'] >= 30)]
+                    master_data_20 = master_data[(master_data['Expected SNR'] < 30) & (master_data['Expected SNR'] >= 20)]
+                    master_data_10 = master_data[(master_data['Expected SNR'] < 20) & (master_data['Expected SNR'] >= 10)].copy()
+                    master_data_0 = master_data[(master_data['Expected SNR'] < 10) & (master_data['Expected SNR'] >= 0)].copy()
+                    master_data_70.to_csv(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']), '70_sample_master.csv'), sep=',', header=True, index=False)
+                    master_data_60.to_csv(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                                       '60_sample_master.csv'), sep=',', header=True, index=False)
+                    master_data_50.to_csv(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                                       '50_sample_master.csv'), sep=',', header=True, index=False)
+                    master_data_40.to_csv(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                                       '40_sample_master.csv'), sep=',', header=True, index=False)
+                    master_data_30.to_csv(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                                       '30_sample_master.csv'), sep=',', header=True, index=False)
+                    master_data_20.to_csv(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                                       '20_sample_master.csv'), sep=',', header=True, index=False)
+                    master_data_10.to_csv(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                                       '10_sample_master.csv'), sep=',', header=True, index=False)
+                    master_data_0.to_csv(os.path.join(configs['synthetic_image_directory'], str(configs['num_stacks']),
+                                                       '0_sample_master.csv'), sep=',', header=True, index=False)
                 master_data.to_csv(master_file_path, sep=',', header=True, index=False)
 
             self.background = BackgroundGen(configs)  # just to use some processing functions later
@@ -303,7 +331,6 @@ class ImageGen:
 
                             # calculate Gaussian at each pixel in image apply Jedicke
                             signal = self.gaussian_streak(big_x, big_y, row, centers_x[jdx], centers_y[jdx], big_l)
-                            print(np.max(signal))
                             signals.append(signal)
 
                             if np.max(signal) > np.max(background_image):
@@ -508,4 +535,4 @@ if __name__ == '__main__':
         config = yaml.safe_load(f)
 
     ai_generator = ImageGen(config)
-    ai_generator.gen_images_and_file()
+    # ai_generator.gen_images_and_file()

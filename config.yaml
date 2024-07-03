@@ -1,11 +1,11 @@
 # User-relevant parameters
-num_stacks: 50               # number of image stacks to be generated
-real_bogus_ratio: 0.5          # the ratio of stacks with asteroids: stack without asteroids
+num_stacks: 1000000          # number of image stacks to be generated
+real_bogus_ratio: 1          # the ratio of stacks with asteroids: stack without asteroids
 num_frames: 32                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
 output_image_width: 224        # in pixels
 output_image_height: 224
-dt: 30                         # the single frame exposure time (seconds)
+dt: 5                          # the single frame exposure time (seconds)
 slew_time: 2                   # time between exposures
 sig_rn: 1.6                    # the read noise specification of the telescope in electrons per pixel
 i_dark: 0.5                    # the dark current specification of the telescope in electrons per second pixel
@@ -14,7 +14,7 @@ v_0: 22.1                      # the telescope's system zero point in magnitudes
 pixel_scale: 1.26              # the pixel scale of the telescope in arcsec per pixel
 classes: ['Asteroid Present', 'Not']    # classes to be determined from stacks
 class_labels: [True, False]
-train_val_ratio: 0.5                    # ratio of samples in training set versus validation set, the test set is generated apart
+train_val_ratio: 0.95          # ratio of samples in training set versus validation set, the test set is generated apart
 
 # if you change of the sub file's column names, then you have to adjust the master file column names as well
 master_file_name: 'sample_master_'                                       # the base name of the master file containing all statistics on all images generated
@@ -52,7 +52,7 @@ horizons_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_
 # visualization, where if 'v' is specified, visualizations are NOT included. If 'm' is specified, then samples are
 # NOT generated. The 'q', 'm' and 'v' parameters can be specified in combinations but the exact results for each
 # combination is not verified. 't' is for using the test set file, 't2' is for second version of testset
-options: 'qv'
+options: 'v'
 
 # For some distributions, like the apparent motion, there may be some range over which you want the distribution to be
 # fitted, as there may be some outlier data from JPL Horizons. It is specified as a list of lists: [[min parameter 1,
@@ -118,10 +118,10 @@ center_y: 112
 
 ########## for set 2 #############################
 num_samples_per_bin: 1
-num_bins: 3
+num_bins: 10
 min_omega: 0
 max_omega: 2500
 min_apparent_magnitude: 15
 max_apparent_magnitude: 20
-min_sigma_g: 2
-max_sigma_g: 2
+min_sigma_g: 1
+max_sigma_g: 3

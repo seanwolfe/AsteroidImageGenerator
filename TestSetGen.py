@@ -170,9 +170,6 @@ class TestSetGen:
         snr_calc['Asteroid Present'] = True
         snr_calc['H'] = combos[:, 1]
         testset_1 = self.signal_gen.gen_snr_file(master=snr_calc, v_s_s=combos[:, 1])
-        testset_1.to_csv(os.path.join(self.configuration['test_set_directory'], 'testset.csv'), sep=',', index=False,
-                            header=True)
-
         new_master = self.streak_start_calc(master=testset_1)
         new_master.to_csv(os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']), 'testset.csv'), sep=',', index=False,
                             header=True)
