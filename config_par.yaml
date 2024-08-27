@@ -1,22 +1,31 @@
 # User-relevant parameters
-num_stacks: 1000000          # number of image stacks to be generated
-real_bogus_ratio: 1          # the ratio of stacks with asteroids: stack without asteroids
-num_frames: 32                 # number of frames in each image stack
+#
+#config_notes: this run generates train with ss, did 500004 so as not to erase other data, and since figured out how to continue training over multiple epochs, testing MJPG
+#
+#
+num_stacks: 500005             # number of image stacks to be generatedi
+real_bogus_ratio: 0.5          # the ratio of stacks with asteroids: stack without asteroids
+num_frames: 16                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
 output_image_width: 224        # in pixels
 output_image_height: 224
-dt: 5                          # the single frame exposure time (seconds)
-slew_time: 2                   # time between exposures
-sig_rn: 1.6                    # the read noise specification of the telescope in electrons per pixel
-i_dark: 0.5                    # the dark current specification of the telescope in electrons per second pixel
-v_bg: 20.5                     # the background sky brightness for the telescope in magnitude per arcsec^2
-v_0: 22.1                      # the telescope's system zero point in magnitudes
-pixel_scale: 1.26              # the pixel scale of the telescope in arcsec per pixel
+dt: 120                           # the single frame exposure time (seconds) ss: 120s, sro:5s
+slew_time: 9                   # time between exposures
+sig_rn: 13                    # the read noise specification of the telescope in electrons ss: 13e-, 15e- RMS at 1 MHz, sro: 1.6
+i_dark: 0                    # the dark current specification of the telescope in electrons per second pixel ss:0, <1 e/pix/sec, sro: 0.5
+v_bg: 20.5                     # the background sky brightness for the telescope in magnitude per arcsec^2, sro: 20.5
+v_0: 22.1                      # the telescope's system zero point in magnitudes  sro: 22.1
+pixel_scale: 0.66              # the pixel scale of the telescope in arcsec per pixel ss: 0.66 arcsec / pixel, sro: 1.26
 classes: ['Asteroid Present', 'Not']    # classes to be determined from stacks
 class_labels: [True, False]
-train_val_ratio: 0.95          # ratio of samples in training set versus validation set, the test set is generated apart
+val_stacks: 10000          # ratio of samples in training set versus validation set, the test set is generated apart
+sets: ['train']
+files: ['vids']
+snr_limits: [3, 20]
 
 # if you change of the sub file's column names, then you have to adjust the master file column names as well
+snr_dist_file_name: 'snr_dist_params.csv'
+general_master_file_name: 'general_master.csv'
 master_file_name: 'sample_master_'                                       # the base name of the master file containing all statistics on all images generated
 distribution_file_name: 'NEA_distributions_'                             # the base name of the file containing stats on the synthetic NEAs
 snr_file_name: 'snr_stats_'                                              # the base name of the file containing stats on the expected snr and signal of synth. NEAs
@@ -24,28 +33,31 @@ center_file_name: 'asteroid_centers_'                                    # the c
 stack_file_name: 'stack_stats_'                                          # the base name of the file containing stats on the image backgrounds
 sbd_file_name: 'NEA_database_ssb.csv'                                    # database of current NEAs downloaded from JPL site
 horizons_file_name: 'NEA_database_hor.csv'                               # queried asteroids from the sbd file, for elements that are needed
-real_image_directory: 'synthetic_tracklets/real_image_stacks'            # the directory where background images should be taken
-#synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
-synthetic_image_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data'
-test_set_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/test3'                           # where the test files are located to see if the generator is performing correctly
+real_image_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'            # the directory where background images should be taken
+#real_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/real_image_stacks'
+synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
+#synthetic_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/synthetic_image_stacks'
+#synthetic_image_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data'
+test_set_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/test3'      # where the test files are located to see if the generator is performing correctly
+stack_file_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'
 
 
 # column names of various files that are generated and read
-master_file_columns: [ 'H', 'omega', 'obs. ast. dist.', 'sun. ast. dist.', 'phase angle', 'Theta',
-                       'Sigma_g', 'g_12', 'Asteroid Present', 'Expected SNR', 'Expected Signal', 'Original Image', 'Saved as Stack', 'Stack Mean',
-                       'Stack Median', 'Stack Standard Deviation', 'Stack Crop Start', 'Center x', 'Center y' ]
-distribution_file_columns: [ 'H', 'omega', 'obs. ast. dist.', 'sun. ast. dist.', 'phase angle', 'Theta', 'Sigma_g', 'g_12', 'Asteroid Present']
-stack_file_columns: [ 'Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median', 'Stack Standard Deviation',
-                      'Stack Crop Start']
-snr_file_columns: [ 'Expected SNR', 'Expected Signal' ]
-center_file_columns: [ 'Center x', 'Center y' ]
+master_file_columns: [ 'H', 'omega', 'obs-ast-dist', 'sun-ast-dist', 'phase_angle', 'theta',
+                       'sigma_g', 'g_12', 'Asteroid_Present', 'Expected_SNR', 'Expected_Signal', 'Original_Image', 'Saved_as_Stack', 'Stack_Mean',
+                       'Stack_Median', 'Stack_Standard_Deviation', 'Stack_Crop_Start', 'Center_x', 'Center_y' ]
+distribution_file_columns: [ 'H', 'omega', 'obs-ast-dist', 'sun-ast-dist', 'phase_angle', 'theta', 'sigma_g', 'g_12', 'Asteroid_Present']
+stack_file_columns: [ 'Original_Image', 'Stack_Mean', 'Stack_Median', 'Stack_Standard_Deviation',
+                      'Stack_Crop_Start']
+snr_file_columns: [ 'Expected_SNR']
+center_file_columns: [ 'Center_x', 'Center_y' ]
 
 # Specific to DistribuGen object, creating samples from known asteroid distributions #################################
 sbd_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',
                     'data_arc', 'n_obs_used', 'H', 'first_obs', 'epoch' ]  # the column names of the sbd file
 horizons_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y', 'data_arc', 'n_obs_used',
-                         'H', 'first_obs', 'epoch', 'omega', 'obs. ast. dist.', 'sun. ast. dist.',
-                         'phase angle' ]  # add columns to the sdb file according to necessary queries
+                         'H', 'first_obs', 'epoch', 'omega', 'obs-ast-dist', 'sun-ast-dist',
+                         'phase_angle' ]  # add columns to the sdb file according to necessary queries
 
 # The default option is 's' for standard, checks all distributions for fitting, does visualization, and generates
 # samples. The 'q' parameter is for quick, only fitting against common distributions, the 'v' parameter is for
@@ -58,7 +70,7 @@ options: 'v'
 # fitted, as there may be some outlier data from JPL Horizons. It is specified as a list of lists: [[min parameter 1,
 # max parameter 1], ..., [min parameter n, max parameter n]]. If not specified it will use the entire range (except for
 # apparent motion, where it cuts off at around 100 deg/day)
-dist_range: None
+dist_range:
 
 
 # Specific to the background generator BackgroundGen object ###########################################################
@@ -95,6 +107,7 @@ signal_crop_threshold: 5  # this number multiplies sig_g to determine the size o
 ##### Imagegen.py specific arguments###################################################################################
 number_of_trys: 100
 current_set: None
+regions: [[152, 158, 882, 698], [504, 0, 890, 692], [990, 0, 1525, 250], [0, 212, 873, 452]]
 
 
 
@@ -125,3 +138,5 @@ min_apparent_magnitude: 15
 max_apparent_magnitude: 20
 min_sigma_g: 1
 max_sigma_g: 3
+
+

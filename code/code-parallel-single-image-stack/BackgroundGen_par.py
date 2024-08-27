@@ -13,6 +13,9 @@ from PIL import Image
 from astropy.stats import sigma_clipped_stats, SigmaClip
 from photutils.segmentation import detect_threshold, detect_sources
 from photutils.utils import circular_footprint
+import mpi4py.rc
+mpi4py.rc.threads = False
+from mpi4py import MPI
 
 plt.style.use(astropy_mpl_style)
 
@@ -109,6 +112,27 @@ class BackgroundGen:
             raise ValueError("No files found in the directory.")
         return
 
+
+    def open_image_known(self, path):
+        """
+        Opens the image by first using get_random_file() to obtain a file path. Splits the file into a header portion
+        and an image portion. The input dimensions of the image is extracted from the header. Pre processing tasks,
+        thresholding and stretching are applied to get post processed image.
+        :return:
+        """
+
+        if path:
+            # open .fits file
+            image_file = get_pkg_data_filename(path)
+            # print image info
+            fits.info(image_file)
+            # get data from image (ie pixel values)
+            image_data = fits.getdata(image_file, ext=0)
+            header = fits.getheader(image_file, ext=0)
+        else:
+            raise ValueError("No files found in the directory.")
+        return image_data
+
     def process(self, image_data, row):
 
         # preprocessing - interval and stretching, normalize [0,1]
@@ -116,10 +140,28 @@ class BackgroundGen:
         stretch = AsinhStretch(a=0.5)
         min_val, max_val = interval.get_limits(image_data)
         # clip bright pixels according to percentage of max pixel value
-        cut = ManualInterval(row['Stack Mean'] - self.configuration['sigma_cutoff_bottom'] * row['Stack Standard Deviation'], row['Stack Mean'] + self.configuration['sigma_cutoff_top'] * row['Stack Standard Deviation'])
+        cut = ManualInterval(row['Stack_Mean'] - self.configuration['sigma_cutoff_bottom'] * row['Stack_Standard_Deviation'], row['Stack_Mean'] + self.configuration['sigma_cutoff_top'] * row['Stack_Standard_Deviation'])
         clipped_data = cut(image_data)
         # stretch data
         return stretch(clipped_data)
+
+    def known_crop(self, row):
+        """
+        Crop an image according to output dimensions, while ensuring that the output dimensions of the image are
+        satisfied. Calculate the region of allowable starting crop pixel locations, and then randomly chose from
+        these locations in order to crop an image of specified dimensions. Stor in image_crop property and crop_start
+        property for location.
+        :return:
+        """
+
+        w2, h2 = self.output_image_dims
+        path = row['Original_Image']
+        image_array = self.open_image_known(path)
+
+        w_start, h_start = row['Stack_Crop_Start']
+
+        # Crop the image
+        return image_array[h_start:h_start + h2, w_start:w_start + w2]
 
     def random_crop(self):
         """
@@ -245,31 +287,33 @@ class BackgroundGen:
         images.
         :return:
         """
-        stats = []
-        for idx in range(0, num_stacks):
-            print(idx)
+
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        local_stats = []
+        for idx in range(rank, num_stacks, size):
+            print(f"Process {rank}, idx {idx}")
             self.open_image()
             self.random_crop()
-            self.save_image()
             self.background_stats()
-            stats.append(
-                [os.path.basename(self.image_file_path), os.path.basename(self.stack_folder), self.mean, self.median,
-                 self.std, self.crop_start])
+            local_stats.append(
+                [self.image_file_path, self.mean, self.median, self.std, self.crop_start]
+            )
 
-        if 't' in self.configuration['options'] and '2' not in self.configuration['options']:
-            pass
-        else:
-            stats_df = pd.DataFrame(stats, columns=['Original Image', 'Saved as Stack', 'Stack Mean', 'Stack Median',
-                                                      'Stack Standard Deviation', 'Stack Crop Start'])
-            if '2' not in self.configuration['options']:
-                stats_df.to_csv(
-                os.path.join(self.configuration['synthetic_image_directory'], str(self.configuration['num_stacks']),
-                             self.configuration['stack_file_name']), sep=',', header=True, index=False)
+            # Gather results from all processes
+        all_stats = comm.gather(local_stats, root=0)
 
-        if '2' in self.configuration['options']:
-            return stats_df
-        else:
-            return
+        if rank == 0:
+            # Flatten the list of lists
+            all_stats = [item for sublist in all_stats for item in sublist]
+
+            if 't' in self.configuration['options'] and '2' not in self.configuration['options']:
+                return
+            else:
+                stats_df = pd.DataFrame(all_stats, columns=self.configuration['stack_file_columns'])
+                return stats_df
 
 
 if __name__ == '__main__':
