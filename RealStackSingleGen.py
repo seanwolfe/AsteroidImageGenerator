@@ -171,8 +171,8 @@ def video_file(final_stacks, low, high):
 
         # Define the codec and create VideoWriter object
         num_frames, height, width, channels = video_array.shape
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec used to compress the frames
-        video_filename = name + '.mp4'
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # Codec used to compress the frames
+        video_filename = name + '.avi'
         video_out = cv2.VideoWriter(video_filename, fourcc, 2.0, (width, height))
 
         # Write each frame to the video
@@ -183,7 +183,7 @@ def video_file(final_stacks, low, high):
         # Release everything when job is finished
         video_out.release()
 
-    return final_final_stacks
+        return final_final_stacks
 
 with open('config.yaml', 'r') as f:
     config = yaml.safe_load(f)
