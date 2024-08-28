@@ -3,7 +3,7 @@
 #config_notes: this run generates train with ss, did 500004 so as not to erase other data, and since figured out how to continue training over multiple epochs, testing MJPG
 #
 #
-num_stacks: 500005             # number of image stacks to be generatedi
+num_stacks: 504             # number of image stacks to be generatedi
 real_bogus_ratio: 0.5          # the ratio of stacks with asteroids: stack without asteroids
 num_frames: 16                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
@@ -21,7 +21,8 @@ class_labels: [True, False]
 val_stacks: 10000          # ratio of samples in training set versus validation set, the test set is generated apart
 sets: ['train']
 files: ['vids']
-snr_limits: [3, 20]
+snr_limits: [1, 20]
+output_file: 'video'     # array or video format
 
 # if you change of the sub file's column names, then you have to adjust the master file column names as well
 snr_dist_file_name: 'snr_dist_params.csv'
@@ -35,9 +36,9 @@ sbd_file_name: 'NEA_database_ssb.csv'                                    # datab
 horizons_file_name: 'NEA_database_hor.csv'                               # queried asteroids from the sbd file, for elements that are needed
 real_image_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'            # the directory where background images should be taken
 #real_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/real_image_stacks'
-synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
+#synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
 #synthetic_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/synthetic_image_stacks'
-#synthetic_image_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data'
+synthetic_image_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/synthetic_tracklets/synthetic_image_stacks'
 test_set_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/test3'      # where the test files are located to see if the generator is performing correctly
 stack_file_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'
 
@@ -45,12 +46,16 @@ stack_file_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/d
 # column names of various files that are generated and read
 master_file_columns: [ 'H', 'omega', 'obs-ast-dist', 'sun-ast-dist', 'phase_angle', 'theta',
                        'sigma_g', 'g_12', 'Asteroid_Present', 'Expected_SNR', 'Expected_Signal', 'Original_Image', 'Saved_as_Stack', 'Stack_Mean',
-                       'Stack_Median', 'Stack_Standard_Deviation', 'Stack_Crop_Start', 'Center_x', 'Center_y' ]
+                       'Stack_Median', 'Stack_Standard_Deviation', 'Stack_Crop_Start', 'F1_Center', 'F2_Center', 'F3_Center', 'F4_Center',
+                       'F5_Center', 'F6_Center', 'F7_Center', 'F8_Center', 'F9_Center', 'F10_Center', 'F11_Center', 'F12_Center', 'F13_Center',
+                       'F14_Center', 'F15_Center', 'F16_Center']              # need to add according to number of frames, not ideal
 distribution_file_columns: [ 'H', 'omega', 'obs-ast-dist', 'sun-ast-dist', 'phase_angle', 'theta', 'sigma_g', 'g_12', 'Asteroid_Present']
 stack_file_columns: [ 'Original_Image', 'Stack_Mean', 'Stack_Median', 'Stack_Standard_Deviation',
                       'Stack_Crop_Start']
 snr_file_columns: [ 'Expected_SNR']
-center_file_columns: [ 'Center_x', 'Center_y' ]
+center_file_columns: [ 'F1_Center', 'F2_Center', 'F3_Center', 'F4_Center',
+                       'F5_Center', 'F6_Center', 'F7_Center', 'F8_Center', 'F9_Center', 'F10_Center', 'F11_Center', 'F12_Center', 'F13_Center',
+                       'F14_Center', 'F15_Center', 'F16_Center' ]
 
 # Specific to DistribuGen object, creating samples from known asteroid distributions #################################
 sbd_file_columns: [ 'full_name', 'a', 'e', 'i', 'om', 'w', 'q', 'ad', 'per_y',

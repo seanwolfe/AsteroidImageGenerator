@@ -79,6 +79,7 @@ class ImageGenPar:
                 dis_gen.generate(num_stacks, ratio)
                 master_data.loc[:, self.configuration['distribution_file_columns']] = dis_gen.samples
 
+
                 # SNR
                 siggen = SnrGen(configs, dis_gen.samples)
                 siggen.gen_snr_file()
@@ -137,6 +138,7 @@ class ImageGenPar:
                 signals = siggen.signal_calc_test(master_file_final)
                 master_file_final.loc[:, 'Expected_Signal'] = signals
                 master_file_final.to_csv(master_file_path, sep=',', header=True, index=False)
+
             else:
                 pass
 
@@ -152,8 +154,8 @@ class ImageGenPar:
             num_false = int(num_stacks/ self.configuration['real_bogus_ratio'] - num_stacks)
             master_false = pd.DataFrame(columns=self.configuration['master_file_columns'])
             master_false.loc[:, 'Asteroid_Present'] = [False for i in range(num_false)]
-            master_false.loc[:, 'Center_x'] = np.zeros((num_false,))
-            master_false.loc[:, 'Center_y'] = np.zeros((num_false,))
+            centers = [['(0, 0)' for j in range(self.configuration['num_frames'])] for i in range(num_false)]
+            master_false.loc[:, self.configuration['center_file_columns']] = centers
 
             configs_false = configs.copy()
             configs_false['num_stacks'] = num_false
@@ -210,7 +212,9 @@ class ImageGenPar:
         return top_folder
 
     def read_master(self, master_file_path):
-        return pd.read_csv(master_file_path, sep=',', header=0, converters={'Stack_Crop_Start': str_to_tuple}, names=self.configuration['master_file_columns'])
+        columns_to_convert = self.configuration['center_file_columns']
+        columns_to_convert_final = ['Stack_Crop_Start'] + columns_to_convert
+        return pd.read_csv(master_file_path, sep=',', header=0, converters={col: str_to_tuple for col in columns_to_convert_final}, names=self.configuration['master_file_columns'])
 
 
     def streak_start_calc(self, master):
@@ -238,8 +242,7 @@ class ImageGenPar:
         if rank == size - 1:
             end += remainder  # Last process takes any remaining elements
 
-        centers_x = []
-        centers_y = []
+        centers = []
         for idx in range(start, end):
             if master['Asteroid_Present'].iloc[idx] == False:
                 center_x = 0
@@ -274,43 +277,39 @@ class ImageGenPar:
                             center_y = np.random.randint(0, self.configuration['output_image_height'] / 8)
             print(f"Process {rank}, Center idx {idx}")
 
-            centers_x.append(center_x)
-            centers_y.append(center_y)
+            centers_i = self.track_centers(master.iloc[idx], center_x, center_y)
+            centers.append(centers_i)
 
         # Gather all local centers_x and centers_y at root process (rank 0)
-        all_centers_x = comm.gather(centers_x, root=0)
-        all_centers_y = comm.gather(centers_y, root=0)
+        all_centers = comm.gather(centers, root=0)
 
         if rank == 0:
-            all_centers_x = [item for sublist in all_centers_x for item in sublist]
-            all_centers_y = [item for sublist in all_centers_y for item in sublist]
-            all_centers_x = pd.DataFrame(all_centers_x, columns=['Center_x'])
-            all_centers_y = pd.DataFrame(all_centers_y, columns=['Center_y'])
-            all_centers_x.reset_index(drop=True)
-            all_centers_y.reset_index(drop=True)
-            final_df = pd.concat([all_centers_x, all_centers_y], axis=1)
-            master.loc[:, self.configuration['center_file_columns']] = final_df
+            # Flatten the 3D list to a 2D list
+            flattened_data = [inner_list for outer_list in all_centers for inner_list in outer_list]
+            all_centers_df = pd.DataFrame(flattened_data, columns=self.configuration['center_file_columns'])
+            all_centers_df.reset_index(drop=True)
+            master.loc[:, self.configuration['center_file_columns']] = all_centers_df
             return master
         else:
             return
 
 
-    def track_centers(self, row):
+    def track_centers(self, row, center_x, center_y):
 
-        center_x0 = row['Center_x']
-        center_y0 = row['Center_y']
-        centers_x = []
-        centers_y = []
+        center_x0 = center_x
+        center_y0 = center_y
+        centers = []
         for kdx in range(0, self.configuration['num_frames']):
             center_xp1 = center_x0 + self.configuration['pixel_scale'] * row['omega'] / 3600 * kdx * (
                     self.configuration['dt'] + self.configuration['slew_time']) * np.cos(np.deg2rad(row['theta']))
             center_yp1 = center_y0 + self.configuration['pixel_scale'] * row['omega'] / 3600 * kdx * (
                     self.configuration['dt'] + self.configuration['slew_time']) * np.sin(np.deg2rad(row['theta']))
-            centers_x.append(center_xp1)
-            centers_y.append(center_yp1)
-        return centers_x, centers_y
+            centers.append((center_xp1, center_yp1))
+        return centers
 
     def gen_images_and_file(self):
+
+        print("Creating Stacks")
 
         master = self.read_master(self.mfp)
 
@@ -339,7 +338,6 @@ class ImageGenPar:
             # Process row here (replace with your actual processing logic)
             print(f"Process {rank} processing row {idx}")
 
-            centers_x, centers_y = self.track_centers(row)
             big_l = row['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])
             signals = []
             final_images = []
@@ -362,8 +360,12 @@ class ImageGenPar:
                                     self.configuration['output_image_height'])
                     big_x, big_y = np.meshgrid(x, y)
 
+                    center_column = f"F{jdx + 1}_Center"
+                    center_x = row[center_column][0]
+                    center_y =row[center_column][1]
+
                     # calculate Gaussian at each pixel in image apply Jedicke
-                    signal = self.gaussian_streak(big_x, big_y, row, centers_x[jdx], centers_y[jdx], big_l)
+                    signal = self.gaussian_streak(big_x, big_y, row, center_x, center_y, big_l)
                     signals.append(signal)
 
                     if np.max(signal) > np.max(background_image):
@@ -377,12 +379,20 @@ class ImageGenPar:
             scaled_image_array = (np.array(final_images) * 255).astype(np.uint8)
             final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
 
-            stack_name = 'stack{0}'.format(idx)
+            if self.configuration['output_file'] == 'array':
+                stack_name = 'stack{0}'.format(idx) + '.npy'
+            else:
+                stack_name = 'stack{0}'.format(idx) + '.avi'
             true_path = os.path.join(self.configuration['synthetic_image_directory'], self.filenames, self.configuration['files'][0], self.configuration['sets'][0], self.configuration['classes'][0])
             false_path = os.path.join(self.configuration['synthetic_image_directory'], self.filenames, self.configuration['files'][0], self.configuration['sets'][0], self.configuration['classes'][1])
             video_file_path = true_path if row['Asteroid_Present'] == True else false_path
             file_paths.append(os.path.join(video_file_path, stack_name))
-            self.video_file(final_image_array, os.path.join(video_file_path, stack_name))
+            if self.configuration['output_file'] == 'array':
+                # permute to (num_frames, num_channels, height, width)
+                ordered_final_image_array = np.transpose(final_image_array, (0, 3, 1, 2))
+                np.save(os.path.join(video_file_path, stack_name), ordered_final_image_array)
+            else:
+                self.video_file(final_image_array, os.path.join(video_file_path, stack_name))
 
         # Synchronize processes
         comm.Barrier()
@@ -421,7 +431,7 @@ class ImageGenPar:
         # Define the codec and create VideoWriter object
         num_frames, height, width, channels = video_array.shape
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # Codec used to compress the frames
-        video_filename = name + '.avi'
+        video_filename = name
         video_out = cv2.VideoWriter(video_filename, fourcc, 2.0, (width, height))
 
         # Write each frame to the video

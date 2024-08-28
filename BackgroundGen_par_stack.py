@@ -98,7 +98,7 @@ class BackgroundGen:
             # open .fits file
             image_file = get_pkg_data_filename(self.image_file_path)
             # print image info
-            fits.info(image_file)
+            # fits.info(image_file)
             # get data from image (ie pixel values)
             image_data = fits.getdata(image_file, ext=0)
             header = fits.getheader(image_file, ext=0)
@@ -158,7 +158,7 @@ class BackgroundGen:
             # open .fits file
             image_file = get_pkg_data_filename(path)
             # print image info
-            fits.info(image_file)
+            #fits.info(image_file)
             # get data from image (ie pixel values)
             image_data = fits.getdata(image_file, ext=0)
             header = fits.getheader(image_file, ext=0)
