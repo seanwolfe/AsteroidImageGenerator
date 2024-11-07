@@ -2,8 +2,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=40
 #SBATCH --time=6:00:0
-#SBATCH --job-name snr-3-20-lossless
-#SBATCH --output=mpi_lossless_output_%j.txt
+#SBATCH --job-name snr-20-30-reg-ss-array
+#SBATCH --output=mpi_snr-20-30-reg-ss-array_output_%j.txt
 #SBATCH --mail-type=FAIL
 
 module load NiaEnv/2022a

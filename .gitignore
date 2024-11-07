@@ -1,2 +1,5 @@
 Figures/
-synthetic_tracklets/
+code/
+to_sync/
+Databases/
+config_par_local.yaml

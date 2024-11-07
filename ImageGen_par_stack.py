@@ -448,7 +448,7 @@ class ImageGenPar:
 
 
 if __name__ == '__main__':
-    with open('config_par.yaml', 'r') as f:
+    with open('config_par_local.yaml', 'r') as f:
         config = yaml.safe_load(f)
     im_gen_par = ImageGenPar(config)
     im_gen_par.gen_images_and_file()

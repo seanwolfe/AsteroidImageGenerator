@@ -3,7 +3,7 @@
 #config_notes: this run generates train with ss, did 500004 so as not to erase other data, and since figured out how to continue training over multiple epochs, testing MJPG
 #
 #
-num_stacks: 504             # number of image stacks to be generatedi
+num_stacks: 500000             # number of image stacks to be generatedi
 real_bogus_ratio: 0.5          # the ratio of stacks with asteroids: stack without asteroids
 num_frames: 16                 # number of frames in each image stack
 observer: '500'                # the observer location according to MPC codes
@@ -21,8 +21,8 @@ class_labels: [True, False]
 val_stacks: 10000          # ratio of samples in training set versus validation set, the test set is generated apart
 sets: ['train']
 files: ['vids']
-snr_limits: [1, 20]
-output_file: 'video'     # array or video format
+snr_limits: [20, 30]
+output_file: 'array'     # array or video format
 
 # if you change of the sub file's column names, then you have to adjust the master file column names as well
 snr_dist_file_name: 'snr_dist_params.csv'
@@ -34,11 +34,11 @@ center_file_name: 'asteroid_centers_'                                    # the c
 stack_file_name: 'stack_stats_'                                          # the base name of the file containing stats on the image backgrounds
 sbd_file_name: 'NEA_database_ssb.csv'                                    # database of current NEAs downloaded from JPL site
 horizons_file_name: 'NEA_database_hor.csv'                               # queried asteroids from the sbd file, for elements that are needed
-real_image_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'            # the directory where background images should be taken
-#real_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/real_image_stacks'
+#real_image_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'            # the directory where background images should be taken
+real_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'
 #synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
-#synthetic_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/synthetic_image_stacks'
-synthetic_image_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/synthetic_tracklets/synthetic_image_stacks'
+synthetic_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/synthetic_image_stacks'
+#synthetic_image_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/synthetic_tracklets/synthetic_image_stacks'
 test_set_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/test3'      # where the test files are located to see if the generator is performing correctly
 stack_file_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'
 
