@@ -165,9 +165,10 @@ def video_file(final_stacks, low, high):
         final_final_stacks.append(scaled_image_array)
         final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
 
-        # np.save(target_id + '_singlerealstack.npy', final_image_array)
+
         video_array = final_image_array.copy()
         name = target_id + '_singlerealstack_' + str(low) + str(high)
+        np.save(name + '.npy', final_image_array)
 
         # Define the codec and create VideoWriter object
         num_frames, height, width, channels = video_array.shape
@@ -183,15 +184,15 @@ def video_file(final_stacks, low, high):
         # Release everything when job is finished
         video_out.release()
 
-        return final_final_stacks
+    return final_final_stacks
 
-with open('config.yaml', 'r') as f:
+with open('config_par.yaml', 'r') as f:
     config = yaml.safe_load(f)
 
 stack_folder = os.path.join('synthetic_tracklets', 'real_image_stacks', 'ds3 (1)', 'ds3_c_a')
 stack_file_names = [f'{i}.fit' for i in range(0, 61)]
 output_size = (224, 224)
-regions = pd.read_csv('regions_1-60.csv', sep=',', header=0, names=['Target','LOW X','LOW Y','HIGH X','HIGH Y'])
+regions = pd.read_csv('Databases/regions_1-60_final.csv', sep=',', header=0, names=['Target','LOW X','LOW Y','HIGH X','HIGH Y'])
 # 1-17, 17-33, 33-48, 45-61
 low = 45
 high = 61
