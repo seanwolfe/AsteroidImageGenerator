@@ -80,7 +80,7 @@ dist_range:
 
 # Specific to the background generator BackgroundGen object ###########################################################
 interval_threshold: 0.1             # threshold applied in preprocessing the image
-stretch: 1                         # stretch factor applied to a Asinh stretch
+stretch: 0.99                         # stretch factor applied to a Asinh stretch
 sigmaclip_sigma: 3.0                 # sigma argument of SigmaClip call
 sigmaclip_maxiters: 10               # maxiters argument of SigmaClip call
 detect_threshold_nsigma: 2.0         # nsigma argument of detect_threshold call

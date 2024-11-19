@@ -34,6 +34,7 @@ def open_region(stack_folder, stack_file_names, region):
         stack_file = os.path.join(stack_folder, stack)
         if stack_file:
             # open .fits file
+            print(stack_file)
             image_file = get_pkg_data_filename(stack_file)
             # print image info
             fits.info(image_file)
@@ -149,9 +150,9 @@ def video_file(final_stacks):
         final_final_stacks.append(scaled_image_array)
         final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
 
-        # np.save(target_id + '_emptyrealstack.npy', final_image_array)
         video_array = final_image_array.copy()
         name = target_id + '_emptyrealstack'
+        np.save(name, final_image_array)
 
         # Define the codec and create VideoWriter object
         num_frames, height, width, channels = video_array.shape
@@ -167,16 +168,17 @@ def video_file(final_stacks):
         # Release everything when job is finished
         video_out.release()
 
-        return final_final_stacks
 
-with open('config.yaml', 'r') as f:
+    return final_final_stacks
+
+with open('config_par.yaml', 'r') as f:
     config = yaml.safe_load(f)
 
-stack_folder = os.path.join('synthetic_tracklets', 'real_image_stacks', 'ds3 (1)', 'ds3_a')
+stack_folder = os.path.join('synthetic_tracklets', 'real_image_stacks', 'ds3 (1)', 'ds3_c_a')
 stack_file_names = [f'{i}.fit' for i in range(0, 61)]
 
 region = [(144, 192), (846, 622)]
-start = np.random.uniform(1, 45)
+start = int(np.random.uniform(1, 45))
 stack = open_region(stack_folder, stack_file_names[start:start + 16], region)
 output_size = (224, 224)
 num_stacks = 108
