@@ -128,7 +128,7 @@ def process(image_data, row, configuration):
     # preprocessing - interval and stretching, normalize [0,1]
     mean = row[0]
     standard_deviation = row[2]
-    stretch = AsinhStretch(a=0.5)
+    stretch = AsinhStretch(a=0.99)
     # clip bright pixels according to percentage of max pixel value
     cut = ManualInterval(mean - configuration['sigma_cutoff_bottom'] * standard_deviation, mean + configuration['sigma_cutoff_top'] * standard_deviation)
     clipped_data = cut(image_data)
@@ -171,7 +171,7 @@ def process_stacks(crops, configuration):
     return processed_stacks
 
 
-def video_file(final_stacks):
+def video_file(final_stacks, start, end):
 
     final_final_stacks = []
     for idx, final_stack in enumerate(final_stacks):
@@ -182,9 +182,10 @@ def video_file(final_stacks):
         final_final_stacks.append(scaled_image_array)
         final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
 
-        np.save(target_id + '_realstack.npy', final_image_array)
+
         video_array = final_image_array.copy()
-        name = target_id + '_realstack'
+        name = target_id + '_realstack_' + str(start) + '_' + str(end)
+        np.save(name, final_image_array)
 
         # Define the codec and create VideoWriter object
         num_frames, height, width, channels = video_array.shape
@@ -200,22 +201,24 @@ def video_file(final_stacks):
         # Release everything when job is finished
         video_out.release()
 
-        return final_final_stacks
+    return final_final_stacks
 
-with open('config.yaml', 'r') as f:
+with open('config_par.yaml', 'r') as f:
     config = yaml.safe_load(f)
 
-target_data_1_16 = pd.read_csv('real_tracklet_pixels_1-16.csv', sep=',', header=0, names=['Asteroid ID', 'LOW X', 'MID X', 'HIGH X', 'LOW Y', 'MID Y', 'HIGH Y'])
-target_data_17_32 = pd.read_csv('real_tracklet_pixels_17-32.csv', sep=',', header=0, names=['Asteroid ID', 'LOW X', 'MID X', 'HIGH X', 'LOW Y', 'MID Y', 'HIGH Y'])
-target_data_33_48 = pd.read_csv('real_tracklet_pixels_33-48.csv', sep=',', header=0, names=['Asteroid ID', 'LOW X', 'MID X', 'HIGH X', 'LOW Y', 'MID Y', 'HIGH Y'])
-stack_folder = os.path.join('synthetic_tracklets', 'real_image_stacks', 'ds3 (1)', 'ds3_c')
+target_data_1_16 = pd.read_csv('Databases/real_tracklet_pixels_1-16.csv', sep=',', header=0, names=['Asteroid ID', 'LOW X', 'MID X', 'HIGH X', 'LOW Y', 'MID Y', 'HIGH Y'])
+target_data_17_32 = pd.read_csv('Databases/real_tracklet_pixels_17-32.csv', sep=',', header=0, names=['Asteroid ID', 'LOW X', 'MID X', 'HIGH X', 'LOW Y', 'MID Y', 'HIGH Y'])
+target_data_33_48 = pd.read_csv('Databases/real_tracklet_pixels_33-48.csv', sep=',', header=0, names=['Asteroid ID', 'LOW X', 'MID X', 'HIGH X', 'LOW Y', 'MID Y', 'HIGH Y'])
+stack_folder = os.path.join('synthetic_tracklets', 'real_image_stacks', 'ds3 (1)', 'ds3_c_a')
 stack_file_names = [f'{i}.fit' for i in range(1, 49)]
 
-stack = open_stack(stack_folder, stack_file_names[33:49])
+start = 33
+end = 49
+stack = open_stack(stack_folder, stack_file_names[start:end + 1])
 output_size = (224, 224)
 stack_crops = random_crop(stack, target_data_33_48, output_size, padding=0)
 processed_stacks = process_stacks(stack_crops, config)
-final_stacks = video_file(processed_stacks)
+final_stacks = video_file(processed_stacks, start, end)
 # final_stacks = video_file(stack_crops)
 """
 for jdx, stack_file_j in enumerate(stack):
