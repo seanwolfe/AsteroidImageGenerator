@@ -164,8 +164,9 @@ def video_file(final_stacks, low, high):
         scaled_image_array = (np.array(final_images) * 255).astype(np.uint8)
         final_final_stacks.append(scaled_image_array)
         final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
-        # save numpy array as [16,3, 224, 224]
 
+        # save numpy array as [16, 3, 224, 224]
+        final_image_array = np.transpose(final_image_array, (0, 3, 1, 2))
 
         video_array = final_image_array.copy()
         name = target_id + '_singlerealstack_' + str(low) + str(high)
