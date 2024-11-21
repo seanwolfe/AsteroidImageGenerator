@@ -166,11 +166,11 @@ def video_file(final_stacks, low, high):
         final_image_array = np.repeat(scaled_image_array[:, :, :, np.newaxis], 3, axis=3)
 
         # save numpy array as [16, 3, 224, 224]
-        final_image_array = np.transpose(final_image_array, (0, 3, 1, 2))
+        ordered_final_image_array = np.transpose(final_image_array, (0, 3, 1, 2))
 
         video_array = final_image_array.copy()
         name = target_id + '_singlerealstack_' + str(low) + str(high)
-        np.save(name + '.npy', final_image_array)
+        np.save(name + '.npy', ordered_final_image_array)
 
         # Define the codec and create VideoWriter object
         num_frames, height, width, channels = video_array.shape
@@ -197,8 +197,8 @@ output_size = (224, 224)
 regions = pd.read_csv('Databases/regions_1-60_final.csv', sep=',', header=0, names=['Target','LOW X','LOW Y','HIGH X','HIGH Y'])
 # 1-17, 17-33, 33-49, 45-61
 # redo 33-49
-low = 45
-high = 61
+low = 33
+high = 49
 stack = open_region(stack_folder, stack_file_names[low:high], regions, output_size)
 
 # stack_crops = random_crop(stack, output_size)
