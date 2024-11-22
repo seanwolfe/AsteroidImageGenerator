@@ -25,8 +25,6 @@ snr_limits: [20, 30]
 output_file: 'array'     # array or video format
 
 # if you change of the sub file's column names, then you have to adjust the master file column names as well
-snr_dist_file_name: 'snr_dist_params.csv'
-general_master_file_name: 'general_master.csv'
 master_file_name: 'sample_master_'                                       # the base name of the master file containing all statistics on all images generated
 distribution_file_name: 'NEA_distributions_'                             # the base name of the file containing stats on the synthetic NEAs
 snr_file_name: 'snr_stats_'                                              # the base name of the file containing stats on the expected snr and signal of synth. NEAs
@@ -39,7 +37,8 @@ real_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synth
 #synthetic_image_directory: 'synthetic_tracklets/synthetic_image_stacks'  # where cropped backgrounds should be stored
 synthetic_image_directory: '/scratch/e/emamirez/wolfesea/AsteroidImageGenerator/synthetic_tracklets/synthetic_image_stacks'
 #synthetic_image_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/synthetic_tracklets/synthetic_image_stacks'
-test_set_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/test3'      # where the test files are located to see if the generator is performing correctly
+test_set_directory: '/media/aeromec/Seagate Desktop Drive/asteroid_data/synthetic_tracklets/'      # where the test files are located to see if the generator is performing correctly
+test_set_master: 'test_set.csv'
 stack_file_directory: 'synthetic_tracklets/real_image_stacks/tycho_tracker/c_a/ds3/'
 
 
