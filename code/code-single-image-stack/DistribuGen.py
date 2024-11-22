@@ -278,9 +278,9 @@ class DistribuGen:
 
                     dist_list.append([col_names[idx], best_dist, params])
 
-        elif os.path.exists('best_dists_df.csv'):
+        elif os.path.exists('Databases/best_dists_df.csv'):
             print("Using previously fit data")
-            best_dist_file = pd.read_csv('best_dists_df.csv', sep=' ', header=0, converters={'Values': str_to_tuple, 'Ranges': str_to_tuple}, names=['Parameter', 'Distribution', 'Values', 'Ranges'])
+            best_dist_file = pd.read_csv('Databases/best_dists_df.csv', sep=' ', header=0, converters={'Values': str_to_tuple, 'Ranges': str_to_tuple}, names=['Parameter', 'Distribution', 'Values', 'Ranges'])
             dist_list = []
             dist_ranges = []
             for idx, row in best_dist_file.iterrows():

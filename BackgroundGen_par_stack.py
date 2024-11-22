@@ -88,7 +88,7 @@ class BackgroundGen:
         """
         if 't' in self.configuration['options']:
             if '2' in self.configuration['options']:
-                self.image_file_path = self.get_random_file()
+                self.image_file_path = self.get_stack_file()
             else:
                 self.image_file_path = os.path.join(self.configuration['test_set_directory'],
                                                 self.configuration['original_image'])
@@ -96,7 +96,7 @@ class BackgroundGen:
             self.image_file_path = self.get_stack_file()
         if self.image_file_path:
             # open .fits file
-            image_file = get_pkg_data_filename(self.image_file_path)
+            image_file = os.path.abspath(self.image_file_path)
             # print image info
             # fits.info(image_file)
             # get data from image (ie pixel values)
@@ -142,7 +142,7 @@ class BackgroundGen:
         # Construct the full path to the selected file
         random_file_path = os.path.join(directory, random_file_name)
 
-        print(f"Random file selected: {random_file_path}")
+        #print(f"Random file selected: {random_file_path}")
 
         return random_file_path
 
@@ -156,7 +156,7 @@ class BackgroundGen:
 
         if path:
             # open .fits file
-            image_file = get_pkg_data_filename(path)
+            image_file = os.path.abspath(path)
             # print image info
             #fits.info(image_file)
             # get data from image (ie pixel values)
@@ -405,18 +405,33 @@ class BackgroundGen:
                 [self.image_file_path, self.mean, self.median, self.std, self.crop_start]
             )
 
-            # Gather results from all processes
+        # Gather results from all processes
         all_stats = comm.gather(local_stats, root=0)
 
         if rank == 0:
             # Flatten the list of lists
             all_stats = [item for sublist in all_stats for item in sublist]
+            # Create DataFrame on rank 0
+            stats_df = pd.DataFrame(all_stats, columns=self.configuration['stack_file_columns'])
+        else:
+            # Placeholder for non-root ranks
+            all_stats = None
+            stats_df = None
 
-            if 't' in self.configuration['options'] and '2' not in self.configuration['options']:
-                return
-            else:
-                stats_df = pd.DataFrame(all_stats, columns=self.configuration['stack_file_columns'])
-                return stats_df
+        # Broadcast all_stats to all ranks
+        all_stats = comm.bcast(all_stats, root=0)
+
+        if all_stats is not None:
+            # Recreate DataFrame on all ranks
+            stats_df = pd.DataFrame(all_stats, columns=self.configuration['stack_file_columns'])
+
+        comm.Barrier()
+
+        # Return DataFrame for all ranks
+        if 't' in self.configuration['options'] and '2' not in self.configuration['options']:
+            return
+        else:
+            return stats_df
 
 
 if __name__ == '__main__':

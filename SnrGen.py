@@ -196,11 +196,13 @@ class SnrGen:
         # big_l = self.dist_data['omega'] * self.configuration['dt'] / (3600 * self.configuration['pixel_scale'])  # veres
         # background_flux = (big_l + 2 * self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * ( 2 *
         #         self.configuration['num_sigmas'] * self.dist_data['Sigma_g']) * self.stack_data['Stack Mean']
+
+
         background_flux = (2 * self.configuration['num_sigmas'] * master['sigma_g'].values) * (2 *  # zhai
                                                                                                 self.configuration[
                                                                                                     'num_sigmas'] *
                                                                                                 master['sigma_g'].values) * \
-                          master[('Stack_Mean')].values
+                          master['Stack_Mean'].values
         ones = np.ones_like(snr_vals)
         coefficients = np.array([ones, -snr_vals ** 2, -snr_vals ** 2 * background_flux]).T
         d = np.array(coefficients[:, 1:-1] ** 2 - 4.0 * coefficients[:, ::2].prod(axis=1, keepdims=True), dtype=float)

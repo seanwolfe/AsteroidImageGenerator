@@ -121,6 +121,59 @@ class BackgroundGen:
         # stretch data
         return stretch(clipped_data)
 
+    def known_crop(self, row):
+        """
+        Crop an image according to output dimensions, while ensuring that the output dimensions of the image are
+        satisfied. Calculate the region of allowable starting crop pixel locations, and then randomly chose from
+        these locations in order to crop an image of specified dimensions. Stor in image_crop property and crop_start
+        property for location.
+        :return:
+        """
+
+        w2, h2 = self.output_image_dims
+        path = row['Original_Image']
+        image_array = self.open_image_known(path)
+
+        w_start, h_start = row['Stack_Crop_Start']
+
+        # Crop the image
+        return image_array[h_start:h_start + h2, w_start:w_start + w2]
+
+    def known_crop_stack(self, row, frame):
+        """
+        Crop an image according to output dimensions, while ensuring that the output dimensions of the image are
+        satisfied. Calculate the region of allowable starting crop pixel locations, and then randomly chose from
+        these locations in order to crop an image of specified dimensions. Stor in image_crop property and crop_start
+        property for location.
+        :return:
+        """
+
+        w2, h2 = self.output_image_dims
+        path = row['Original_Image']
+
+        # Extract the directory and filename from the original path
+        directory = os.path.dirname(path)
+        original_file_name = os.path.basename(path)
+
+        # Extract the file number from the original filename
+        original_number = int(original_file_name.split('.')[0])
+
+        # Calculate the new file number
+        new_number = original_number + frame
+
+        # Construct the new filename
+        new_file_name = f"{new_number}.fit"
+
+        # Construct the full path to the new file
+        new_file_path = os.path.join(directory, new_file_name)
+
+        image_array = self.open_image_known(new_file_path)
+
+        w_start, h_start = row['Stack_Crop_Start']
+
+        # Crop the image
+        return image_array[h_start:h_start + h2, w_start:w_start + w2]
+
     def random_crop(self):
         """
         Crop an image according to output dimensions, while ensuring that the output dimensions of the image are

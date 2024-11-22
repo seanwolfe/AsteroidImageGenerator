@@ -2,3 +2,4 @@ Figures/
 code/
 to_sync/
 config_par_local.yaml
+.gitignore

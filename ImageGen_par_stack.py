@@ -37,139 +37,146 @@ class ImageGenPar:
 
         # Print rank and size to confirm process initialization
         print(f"Process {rank} out of {size} processes initialized")
+
         self.configuration = configs
-        self.filenames = self.file_names()
-        master_file_path = os.path.join(self.configuration['synthetic_image_directory'], self.filenames,
-                                        self.configuration['master_file_name'] + self.filenames + '_' + self.configuration['sets'][0] + '.csv')
-        self.mfp = master_file_path
-        if os.path.exists(self.mfp):
-            existed = True
+
+        if 't2' in self.configuration['options']:
+            self.filenames = configs['test_set_directory']
+            self.mfp = os.path.join(configs['test_set_directory'], configs['test_set_master'])
         else:
-            existed = False
 
-        if rank == 0:
-
-            # save the config options
-            yaml_contents_str = yaml.dump(configs)
-            with open(os.path.join(self.configuration['synthetic_image_directory'], self.filenames,
-                                   'configuration.txt'), 'w') as file:
-                file.write(yaml_contents_str)
-
-            ratio = configs['real_bogus_ratio']
-            if configs['sets'][0] == 'train':
-                num_stacks = self.configuration['num_stacks']
+            self.filenames = self.file_names()
+            master_file_path = os.path.join(self.configuration['synthetic_image_directory'], self.filenames,
+                                            self.configuration['master_file_name'] + self.filenames + '_' + self.configuration['sets'][0] + '.csv')
+            self.mfp = master_file_path
+            if os.path.exists(self.mfp):
+                existed = True
             else:
-                num_stacks = self.configuration['val_stacks']
+                existed = False
 
-            # if there is already a master file for the specified range
-            if existed:
-                pass
-            else:
-                master_file_final = pd.DataFrame(columns=self.configuration['master_file_columns'])
-                master_data = pd.DataFrame(columns=self.configuration['master_file_columns'])
-                # generate master and samples
-                dis_gen = DistribuGen(fp_pre=configs['sbd_file_name'], fp_post=configs['horizons_file_name'],
-                                      fp_final=os.path.join(configs['synthetic_image_directory'],
-                                                            str(configs['num_stacks']), configs['distribution_file_name']),
-                                      cnames_ssb=configs['sbd_file_columns'],
-                                      cnames_horizon=configs['horizons_file_columns'],
-                                      cnames_dist=configs['distribution_file_columns'], options=configs['options'],
-                                      dist_range=configs['dist_range'], observer=configs['observer'])
+            if rank == 0:
 
-                dis_gen.generate(num_stacks, ratio)
-                master_data.loc[:, self.configuration['distribution_file_columns']] = dis_gen.samples
+                # save the config options
+                yaml_contents_str = yaml.dump(configs)
+                with open(os.path.join(self.configuration['synthetic_image_directory'], self.filenames,
+                                       'configuration.txt'), 'w') as file:
+                    file.write(yaml_contents_str)
 
+                ratio = configs['real_bogus_ratio']
+                if configs['sets'][0] == 'train':
+                    num_stacks = self.configuration['num_stacks']
+                else:
+                    num_stacks = self.configuration['val_stacks']
 
-                # SNR
-                siggen = SnrGen(configs, dis_gen.samples)
-                siggen.gen_snr_file()
-                master_data.loc[:, 'Expected_SNR'] = siggen.snr_data
-                master_data_cut = master_data[(master_data['Expected_SNR'] < self.configuration['snr_limits'][0]) & (
-                            master_data['Expected_SNR'] >= self.configuration['snr_limits'][1])]
+                # if there is already a master file for the specified range
+                if existed:
+                    pass
+                else:
+                    master_file_final = pd.DataFrame(columns=self.configuration['master_file_columns'])
+                    master_data = pd.DataFrame(columns=self.configuration['master_file_columns'])
+                    # generate master and samples
+                    dis_gen = DistribuGen(fp_pre=configs['sbd_file_name'], fp_post=configs['horizons_file_name'],
+                                          fp_final=os.path.join(configs['synthetic_image_directory'],
+                                                                str(configs['num_stacks']), configs['distribution_file_name']),
+                                          cnames_ssb=configs['sbd_file_columns'],
+                                          cnames_horizon=configs['horizons_file_columns'],
+                                          cnames_dist=configs['distribution_file_columns'], options=configs['options'],
+                                          dist_range=configs['dist_range'], observer=configs['observer'])
 
-                # Asteroid samples
-                master_file_final = pd.concat([master_file_final, master_data_cut], ignore_index=True)
-                dis_gen.options = dis_gen.options + 'f'
-                while len(master_file_final['Expected_SNR']) < num_stacks:
-                    print("Current # of Samples for SNR " + str(self.configuration['snr_limits']) + ": " + str(len(master_file_final['Expected_SNR'])))
                     dis_gen.generate(num_stacks, ratio)
                     master_data.loc[:, self.configuration['distribution_file_columns']] = dis_gen.samples
+
 
                     # SNR
                     siggen = SnrGen(configs, dis_gen.samples)
                     siggen.gen_snr_file()
-                    master_data.loc[:, self.configuration['snr_file_columns']] = siggen.snr_data
-                    master_data_cut = master_data[(master_data['Expected_SNR'] < self.configuration['snr_limits'][1]) & (master_data['Expected_SNR'] >= self.configuration['snr_limits'][0])]
+                    master_data.loc[:, 'Expected_SNR'] = siggen.snr_data
+                    master_data_cut = master_data[(master_data['Expected_SNR'] < self.configuration['snr_limits'][0]) & (
+                                master_data['Expected_SNR'] >= self.configuration['snr_limits'][1])]
 
+                    # Asteroid samples
                     master_file_final = pd.concat([master_file_final, master_data_cut], ignore_index=True)
+                    dis_gen.options = dis_gen.options + 'f'
+                    while len(master_file_final['Expected_SNR']) < num_stacks:
+                        print("Current # of Samples for SNR " + str(self.configuration['snr_limits']) + ": " + str(len(master_file_final['Expected_SNR'])))
+                        dis_gen.generate(num_stacks, ratio)
+                        master_data.loc[:, self.configuration['distribution_file_columns']] = dis_gen.samples
+
+                        # SNR
+                        siggen = SnrGen(configs, dis_gen.samples)
+                        siggen.gen_snr_file()
+                        master_data.loc[:, self.configuration['snr_file_columns']] = siggen.snr_data
+                        master_data_cut = master_data[(master_data['Expected_SNR'] < self.configuration['snr_limits'][1]) & (master_data['Expected_SNR'] >= self.configuration['snr_limits'][0])]
+
+                        master_file_final = pd.concat([master_file_final, master_data_cut], ignore_index=True)
 
 
-                master_file_final.to_csv(master_file_path, sep=',', header=True, index=False)
-        else:
-            pass
-
-        print(f"Process {rank} before first barrier")
-        comm.Barrier()
-        print(f"Process {rank} after first barrier")
-
-        if existed:
-            pass
-        else:
-            master_file_path = os.path.join(self.configuration['synthetic_image_directory'], self.filenames,
-                                            self.configuration['master_file_name'] + self.filenames + '_' +
-                                            self.configuration['sets'][0] + '.csv')
-            master_file_final = self.read_master(master_file_path)
-            # Choose background and get statistics
-            num_stacks = len(master_file_final['Expected_SNR'])
-            aigen = BackgroundGen(configs)
-
-            stack_df = aigen.stack_generator(num_stacks)
-
-        comm.Barrier()
-
-        if existed:
-            pass
-        else:
-            if rank == 0:
-                master_file_final.loc[:, self.configuration['stack_file_columns']] = stack_df
-
-                # get signal
-                siggen = SnrGen(configs, master_file_final)
-                signals = siggen.signal_calc_test(master_file_final)
-                master_file_final.loc[:, 'Expected_Signal'] = signals
-                master_file_final.to_csv(master_file_path, sep=',', header=True, index=False)
-
+                    master_file_final.to_csv(master_file_path, sep=',', header=True, index=False)
             else:
                 pass
 
-        comm.Barrier()
+            print(f"Process {rank} before first barrier")
+            comm.Barrier()
+            print(f"Process {rank} after first barrier")
 
-        if existed:
-            master_file_final = self.read_master(master_file_path)
-        else:
-            master_file_final = self.read_master(master_file_path)
-            master_file_final = self.streak_start_calc(master_file_final)
+            if existed:
+                pass
+            else:
+                master_file_path = os.path.join(self.configuration['synthetic_image_directory'], self.filenames,
+                                                self.configuration['master_file_name'] + self.filenames + '_' +
+                                                self.configuration['sets'][0] + '.csv')
+                master_file_final = self.read_master(master_file_path)
+                # Choose background and get statistics
+                num_stacks = len(master_file_final['Expected_SNR'])
+                aigen = BackgroundGen(configs)
 
-            # Generate false samples
-            num_false = int(num_stacks/ self.configuration['real_bogus_ratio'] - num_stacks)
-            master_false = pd.DataFrame(columns=self.configuration['master_file_columns'])
-            master_false.loc[:, 'Asteroid_Present'] = [False for i in range(num_false)]
-            centers = [['(0, 0)' for j in range(self.configuration['num_frames'])] for i in range(num_false)]
-            master_false.loc[:, self.configuration['center_file_columns']] = centers
+                stack_df = aigen.stack_generator(num_stacks)
 
-            configs_false = configs.copy()
-            configs_false['num_stacks'] = num_false
-            aigen_false = BackgroundGen(configs)
-            stack_df_false = aigen_false.stack_generator(num_false)
-            master_false.loc[:, self.configuration['stack_file_columns']] = stack_df_false
-            master_file_final = pd.concat([master_file_final, master_false], ignore_index=True)
+            comm.Barrier()
 
-        if rank == 0:
-            master_file_final.to_csv(master_file_path, sep=',', header=True, index=False)
-        else:
-            pass
+            if existed:
+                pass
+            else:
+                if rank == 0:
+                    master_file_final.loc[:, self.configuration['stack_file_columns']] = stack_df
 
-        comm.Barrier()
+                    # get signal
+                    siggen = SnrGen(configs, master_file_final)
+                    signals = siggen.signal_calc_test(master_file_final)
+                    master_file_final.loc[:, 'Expected_Signal'] = signals
+                    master_file_final.to_csv(master_file_path, sep=',', header=True, index=False)
+
+                else:
+                    pass
+
+            comm.Barrier()
+
+            if existed:
+                master_file_final = self.read_master(master_file_path)
+            else:
+                master_file_final = self.read_master(master_file_path)
+                master_file_final = self.streak_start_calc(master_file_final)
+
+                # Generate false samples
+                num_false = int(num_stacks/ self.configuration['real_bogus_ratio'] - num_stacks)
+                master_false = pd.DataFrame(columns=self.configuration['master_file_columns'])
+                master_false.loc[:, 'Asteroid_Present'] = [False for i in range(num_false)]
+                centers = [['(0, 0)' for j in range(self.configuration['num_frames'])] for i in range(num_false)]
+                master_false.loc[:, self.configuration['center_file_columns']] = centers
+
+                configs_false = configs.copy()
+                configs_false['num_stacks'] = num_false
+                aigen_false = BackgroundGen(configs)
+                stack_df_false = aigen_false.stack_generator(num_false)
+                master_false.loc[:, self.configuration['stack_file_columns']] = stack_df_false
+                master_file_final = pd.concat([master_file_final, master_false], ignore_index=True)
+
+            if rank == 0:
+                master_file_final.to_csv(master_file_path, sep=',', header=True, index=False)
+            else:
+                pass
+
+            comm.Barrier()
 
         return
 
@@ -385,7 +392,23 @@ class ImageGenPar:
                 stack_name = 'stack{0}'.format(idx) + '.avi'
             true_path = os.path.join(self.configuration['synthetic_image_directory'], self.filenames, self.configuration['files'][0], self.configuration['sets'][0], self.configuration['classes'][0])
             false_path = os.path.join(self.configuration['synthetic_image_directory'], self.filenames, self.configuration['files'][0], self.configuration['sets'][0], self.configuration['classes'][1])
-            video_file_path = true_path if row['Asteroid_Present'] == True else false_path
+
+            if 't2' in self.configuration['options']:
+                vids_path = os.path.join(self.configuration['test_set_directory'], 'vids')
+                test_path = os.path.join(vids_path, 'test')
+                ap_path = os.path.join(test_path, 'Asteroid Present')
+                np_path = os.path.join(test_path, 'Not')
+
+                if rank == 0 and idx == 0:
+                    os.mkdir(test_path)
+                    os.mkdir(ap_path)
+                    os.mkdir(np_path)
+
+                comm.Barrier()
+
+                video_file_path = ap_path
+            else:
+                video_file_path = true_path if row['Asteroid_Present'] == True else false_path
             file_paths.append(os.path.join(video_file_path, stack_name))
             if self.configuration['output_file'] == 'array':
                 # permute to (num_frames, num_channels, height, width)
