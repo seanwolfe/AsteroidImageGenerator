@@ -44,11 +44,11 @@ class TestSetGen:
 
         min_omega = self.configuration['min_omega']
         max_omega = self.configuration['max_omega']
-        omegas = np.linspace(min_omega, max_omega, num=num_bins * num_samples_per_bin)
+        omegas = np.linspace(min_omega, max_omega, num=int(num_bins * np.sqrt(num_samples_per_bin)))
 
         min_v = self.configuration['min_apparent_magnitude']
         max_v = self.configuration['max_apparent_magnitude']
-        vs = np.linspace(min_v, max_v, num=num_bins * num_samples_per_bin)
+        vs = np.linspace(min_v, max_v, num=int(num_bins * np.sqrt(num_samples_per_bin)))
 
         combos = np.array(list(product(omegas, vs)))
 
