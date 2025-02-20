@@ -335,14 +335,14 @@ class DistribuGen:
         # for streak orientation and width, draw from uniform distribution and known gaussian distribution
         self.samples['theta'] = np.random.uniform(0, 360, size=num_samples)
         self.samples['sigma_g'] = np.random.uniform(0.5, 1, size=num_samples)
-        self.samples['g_12'] = np.random.choice([0.58, 0.47], size=num_samples)  # asteroid types c and s
+        self.samples['g_12'] = np.random.choice([0.64, 0.41], size=num_samples)  # asteroid types c and s
         self.samples['Asteroid_Present'] = [True for idx in range(0, num_samples)]
 
         full_column_names = self.dist_names.copy()
         false_data = pd.DataFrame(np.nan, index=np.arange(total_samples - num_samples), columns=full_column_names)
         false_data['Asteroid_Present'] = False
         self.samples = pd.concat([self.samples, false_data], ignore_index=True)
-        # self.samples.to_csv(self.final_path, sep=',', header=True, index=False)
+        self.samples.to_csv('synth_dist.csv', sep=',', header=True, index=False)
         return
 
     @staticmethod
